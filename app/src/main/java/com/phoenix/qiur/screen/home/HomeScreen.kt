@@ -1,8 +1,8 @@
 package com.phoenix.qiur.screen.home
 
 import android.Manifest
+import android.graphics.BitmapFactory
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -52,11 +52,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
 import com.phoenix.qiur.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import zxingcpp.BarcodeReader
 
 @Composable
 fun HomeScreen() {
@@ -92,23 +91,16 @@ fun HomeScreen() {
 
                 coroutineScope.launch(Dispatchers.IO) {
                     try {
-                        val image = InputImage.fromFilePath(context, uri)
-                        val scanner = BarcodeScanning.getClient()
-                        val result = scanner.process(image)
-                            .addOnSuccessListener { barcodes ->
-//                                if (barcodes.isEmpty())
-//                                    snackbar("You Sure it's the right one?")
-//                                else
-                                    snackbar(barcodes.map { it.rawValue }.toString())
-//                                for (barcode in barcodes) {
-//                                    snackbar(barcode.rawValue.toString())
-//                                }
-                            }
-                            .addOnFailureListener {
-                                snackbar("Houston, we have a problem")
-                            }
+                        val barcodeReader = BarcodeReader().apply {
+                            options = BarcodeReader.Options(tryHarder = true, tryDenoise = true, tryDownscale = true, returnErrors = true)
+                        }
+                        val bitmap = context.contentResolver.openInputStream(uri).use { input ->
+                            BitmapFactory.decodeStream(input)
+                        }
+                        val result = barcodeReader.read(bitmap)
+                        snackbar(result.map { it.text }.toString())
                     } catch (e: Exception) {
-                        Toast.makeText(context, e.message.toString(), Toast.LENGTH_LONG).show()
+                        snackbar("Houston, We have a problem: ${e.message}")
                     }
                 }
             }

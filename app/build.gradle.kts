@@ -64,7 +64,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
 
     implementation(libs.androidx.navigation)
-    implementation(libs.google.mlkit)
+    implementation(libs.zxing.android)
 //    Koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
