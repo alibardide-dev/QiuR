@@ -21,7 +21,7 @@ android {
         //noinspection EditedTargetSdkVersion
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.0.1-alpha"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
 
     implementation(libs.androidx.navigation)
+    implementation(libs.google.mlkit)
 //    Koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
