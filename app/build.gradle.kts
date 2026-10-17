@@ -62,8 +62,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-
     implementation(libs.androidx.navigation)
+//    zxing
     implementation(libs.zxing.android)
 //    Koin
     implementation(platform(libs.koin.bom))
@@ -73,6 +73,12 @@ dependencies {
     implementation(libs.koin.compose.navigation3)
 //    Coil
     implementation(libs.coil.kt)
+//    Camera
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
