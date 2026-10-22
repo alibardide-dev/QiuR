@@ -4,16 +4,14 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.SurfaceRequest
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,6 +31,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -53,23 +54,32 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import coil3.compose.rememberAsyncImagePainter
 import com.phoenix.qiur.R
+import com.phoenix.qiur.data.model.InputSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import zxingcpp.BarcodeReader
 
 @Composable
 fun HomeScreen(
     modifier: Modifier,
     snackbar: (String) -> Unit,
+    inputSource: InputSource,
+    onChangeInput: (InputSource) -> Unit,
     surfaceRequest: SurfaceRequest?,
     scanCode: (Bitmap) -> Unit,
+    resultPhoto: Bitmap?,
+    result:  List<BarcodeReader.Result>?,
+    clearResult: () -> Unit,
+    showCameraPopup: Boolean,
+    dismissCameraRequest: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var showCameraPopup by remember { mutableStateOf(true) }
     var hasCameraAccess by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -78,34 +88,22 @@ fun HomeScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-    var photoUri: Uri? by remember { mutableStateOf(null) }
 
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                showCameraPopup = false
+                dismissCameraRequest()
                 hasCameraAccess = true
+                onChangeInput(InputSource.CAMERA)
                 snackbar("We got live camera")
-            } else
+            } else {
                 snackbar("No camera it is.")
+            }
         }
 
-//    val pickMedia =
-//        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-//            uri?.let { uri ->
-//                photoUri = uri
-//                coroutineScope.launch(Dispatchers.IO) {
-//                    val bitmap = context.contentResolver.openInputStream(uri).use { inputStream ->
-//                        BitmapFactory.decodeStream(inputStream)
-//                    }
-//                    scanCode(bitmap)
-//                }
-//            }
-//        }
     val openDocument =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let { uri ->
-                photoUri = uri
                 coroutineScope.launch(Dispatchers.IO) {
                     val bitmap = context.contentResolver.openInputStream(uri).use { inputStream ->
                         BitmapFactory.decodeStream(inputStream)
@@ -115,66 +113,112 @@ fun HomeScreen(
             }
         }
 
-    BackHandler(photoUri != null) {
-        photoUri = null
+    BackHandler(resultPhoto != null) {
+        clearResult()
     }
 
-
     Box(modifier = modifier.fillMaxSize()) {
-        AnimatedVisibility(
-            visible = photoUri != null,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            ResultScreen(
-                photoUri = photoUri,
-                onClickClose = { photoUri = null }
-            )
-        }
-        Crossfade(hasCameraAccess) { hasAccess ->
-            Box(Modifier.fillMaxSize()) {
-                if (hasAccess) {
-                    surfaceRequest?.let { request ->
-                        CameraXViewfinder(
-                            surfaceRequest = request,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Bottom
-                    ) {
-                        AnimatedVisibility(
-                            visible = photoUri == null,
+        AnimatedContent(resultPhoto != null) { hasPicture ->
+            if (hasPicture) {
+                ResultScreen(
+                    bitmap = resultPhoto,
+                    onClickClose = { clearResult() }
+                )
+            } else {
+                Crossfade(inputSource) { source ->
+                    Box(Modifier.fillMaxSize()) {
+                        HomeFloatingToolbar(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            PhotoPickerWidget(
-                                pickMedia = {
+                                .align(Alignment.BottomCenter)
+                                .offset(y = -ScreenOffset)
+                                .zIndex(1f),
+                            onClickCamera = {
+                                if (hasCameraAccess)
+                                    onChangeInput(InputSource.CAMERA)
+                                else
+                                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                            },
+                            onClickPicture = {
+                                onChangeInput(InputSource.PICTURE)
+                            }
+                        )
+                        when (source) {
+                            InputSource.STANDBY -> {}
+
+                            InputSource.CAMERA ->
+                                surfaceRequest?.let { request ->
+                                    CameraXViewfinder(
+                                        surfaceRequest = request,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+
+                            InputSource.PICTURE ->
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.Bottom
+                                ) {
+                                    AnimatedVisibility(
+                                        visible = resultPhoto == null,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                    ) {
+                                        PhotoPickerWidget(
+                                            pickMedia = {
 //                                    pickMedia.launch(
 //                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
 //                                    )
-                                    openDocument.launch(arrayOf("image/*"))
+                                                openDocument.launch(arrayOf("image/*"))
+                                            }
+                                        )
+                                    }
+                                    AnimatedVisibility(
+                                        visible = showCameraPopup,
+                                        modifier = Modifier
+                                            .align(Alignment.CenterHorizontally)
+                                            .offset(y = -ScreenOffset - 56.dp),
+                                        exit = shrinkVertically()
+                                    ) {
+                                        CameraPermissionPopup(
+                                            onClickDismiss = {
+                                                dismissCameraRequest()
+                                            },
+                                            onClickAllow = {
+                                                permissionLauncher.launch(Manifest.permission.CAMERA)
+                                            }
+                                        )
+                                    }
                                 }
-                            )
-                        }
-                        AnimatedVisibility(
-                            visible = showCameraPopup,
-                            modifier = Modifier.align(Alignment.CenterHorizontally),
-                            exit = shrinkVertically()
-                        ) {
-                            CameraPermissionPopup(
-                                onClickDismiss = { showCameraPopup = false },
-                                onClickAllow = {
-                                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                                }
-                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeFloatingToolbar(
+    modifier: Modifier,
+    onClickCamera: () -> Unit,
+    onClickPicture: () -> Unit,
+) {
+    HorizontalFloatingToolbar(
+        modifier = modifier,
+        expanded = true
+    ) {
+        IconButton(onClick = { onClickCamera() }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_camera),
+                contentDescription = "Switch to camera"
+            )
+        }
+        IconButton(onClick = { onClickPicture() }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_photo),
+                contentDescription = "Switch to picture"
+            )
         }
     }
 }
@@ -223,12 +267,12 @@ private fun PhotoPickerWidget(
 
 @Composable
 private fun ResultScreen(
-    photoUri: Uri?,
+    bitmap: Bitmap?,
     onClickClose: () -> Unit
 ) {
     Box {
         Image(
-            painter = rememberAsyncImagePainter(photoUri),
+            painter = rememberAsyncImagePainter(bitmap),
             contentDescription = "Selected Photo",
             modifier = Modifier.fillMaxSize()
         )

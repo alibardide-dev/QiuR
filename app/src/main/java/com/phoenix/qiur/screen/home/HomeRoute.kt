@@ -3,6 +3,7 @@ package com.phoenix.qiur.screen.home
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -25,14 +26,16 @@ fun HomeRoute() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val uiState = homeViewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val surfaceRequest = homeViewModel.surfaceRequest.collectAsStateWithLifecycle()
     val result by homeViewModel.scanResult.collectAsStateWithLifecycle()
+    val photoResult by homeViewModel.photoResult.collectAsStateWithLifecycle()
 
     fun snackbar(message: String) {
         coroutineScope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
-                message = message, withDismissAction = true
+                message = message, withDismissAction = true, duration = SnackbarDuration.Indefinite
             )
         }
     }
@@ -41,17 +44,26 @@ fun HomeRoute() {
         homeViewModel.bindToCamera(appContext, lifecycleOwner)
     }
     LaunchedEffect(result) {
-        result?.let { snackbar(it.toString()) }
+        result?.let { result -> snackbar(result.toString()) }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         HomeScreen(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            inputSource = uiState.inputSource,
+            onChangeInput = { homeViewModel.onAction(HomeUiAction.ChangeInput(it)) },
             snackbar = { snackbar(it) },
             surfaceRequest = surfaceRequest.value,
-            scanCode = { homeViewModel.onAction(HomeUiAction.ScanCode(it)) }
+            scanCode = { homeViewModel.onAction(HomeUiAction.ScanCodeFromPhoto(it)) },
+            resultPhoto = photoResult,
+            result = result,
+            clearResult = { homeViewModel.onAction(HomeUiAction.CleanResult) },
+            showCameraPopup = uiState.askCamera,
+            dismissCameraRequest = { homeViewModel.onAction(HomeUiAction.DismissCameraRequest) },
         )
     }
 }

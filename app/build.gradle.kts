@@ -63,6 +63,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.navigation)
+//    DataStore
+    implementation(libs.androidx.datastore.preferences)
 //    zxing
     implementation(libs.zxing.android)
 //    Koin

@@ -1,5 +1,5 @@
 [versions]
-agp = "9.2.1"
+agp = "9.2.0"
 kotlin = "2.4.21"
 ksp = "2.3.12"
 
@@ -10,9 +10,11 @@ espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 composeBom = "2026.09.00"
+material3 = "1.5.0-beta01"
 lifecycleViewmodelKtx = "2.11.0"
 
 navigation = "2.10.2"
+dataStore = "1.2.1"
 zxing = "3.1.1"
 koin = "4.2.2"
 coil = "3.6.3"
@@ -32,9 +34,11 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 androidx-navigation = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
+# DataStore
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore"}
 # zxing
 zxing-android = { module = "io.github.zxing-cpp:android", version.ref = "zxing" }
 # Coil

@@ -1,7 +1,8 @@
 package com.phoenix.qiur
 
 import android.app.Application
-import com.phoenix.qiur.di.appModule
+import com.phoenix.qiur.di.dataModule
+import com.phoenix.qiur.di.viewModelModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext.startKoin
 
@@ -10,7 +11,7 @@ class BaseApplication : Application() {
         super.onCreate()
         startKoin {
             androidContext(this@BaseApplication)
-            modules(appModule)
+            modules(dataModule, viewModelModule)
         }
     }
 }
