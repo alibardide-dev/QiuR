@@ -2,16 +2,23 @@ package com.phoenix.qiur.screen.home
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.SystemClock
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phoenix.qiur.data.PreferencesStore
+import com.phoenix.qiur.utils.applyExif
+import com.phoenix.qiur.utils.downscale
+import com.phoenix.qiur.utils.rotate
+import com.phoenix.qiur.utils.toBitmap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,10 +36,19 @@ class HomeViewModel(
 
     private val _surfaceRequest = MutableStateFlow<SurfaceRequest?>(null)
     val surfaceRequest = _surfaceRequest.asStateFlow()
-    private val _scanResult = MutableStateFlow<List<BarcodeReader.Result>?>(null)
-    val scanResult = _scanResult.asStateFlow()
+    private val _scanResults = MutableStateFlow<List<BarcodeReader.Result>>(emptyList())
+    val scanResults = _scanResults.asStateFlow()
     private val _photoResult = MutableStateFlow<Bitmap?>(null)
     val photoResult = _photoResult.asStateFlow()
+    private val barcodeReader = BarcodeReader().apply {
+        options = BarcodeReader.Options(
+            tryHarder = true,
+//            tryDenoise = true,
+//            tryInvert = true,
+//            tryRotate = true,
+            tryDownscale = true,
+        )
+    }
 
     init {
         viewModelScope.launch {
@@ -50,18 +66,25 @@ class HomeViewModel(
         setSurfaceProvider { request -> _surfaceRequest.value = request }
     }
 
+    @Volatile private var pausedUntil = 0L
     private val analysisUseCase = ImageAnalysis.Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .build()
         .apply {
             setAnalyzer(analysisExecutor) { imageProxy ->
-                imageProxy.use { imageProxy ->
-                    imageProxy.imageInfo.rotationDegrees
-                    val bitmap = imageProxy.toBitmap()
-                    val result = scanCode(bitmap)
-                    if (!result.isNullOrEmpty()) {
-                        _scanResult.update { result }
-                        _photoResult.update { bitmap }
+                viewModelScope.launch(Dispatchers.Default) {
+                    if (SystemClock.elapsedRealtime() < pausedUntil) {
+                        imageProxy.close()
+                        return@launch
+                    }
+                    imageProxy.use { proxy ->
+                        val bitmap = proxy.toBitmap().rotate(proxy.imageInfo.rotationDegrees)
+                        val result = scanCode(bitmap)
+                        if (result.isNotEmpty()) {
+                            _photoResult.update { bitmap.downscale() }
+                            _scanResults.update { result }
+                            pausedUntil = SystemClock.elapsedRealtime() + 1000
+                        }
                     }
                 }
             }
@@ -76,16 +99,28 @@ class HomeViewModel(
                 }
             }
 
-            is HomeUiAction.ScanCodeFromPhoto -> {
-                _photoResult.update { action.bitmap }
-                viewModelScope.launch {
-                    _scanResult.update { scanCode(action.bitmap) }
+            is HomeUiAction.ScanCodeFromUri -> {
+                viewModelScope.launch(Dispatchers.Default) {
+                    _uiState.update { it.copy(isProcessing = true) }
+                    val orientation = action.context.contentResolver.openInputStream(action.uri).use {
+                        ExifInterface(it!!).getAttributeInt(
+                            ExifInterface.TAG_ORIENTATION,
+                            ExifInterface.ORIENTATION_NORMAL
+                        )
+                    }
+                    val bitmap = action.uri
+                        .toBitmap(action.context)
+                        .applyExif(orientation)
+
+                    _photoResult.update { bitmap.downscale() }
+                    _scanResults.update { scanCode(bitmap) }
+                    _uiState.update { it.copy(isProcessing = false) }
                 }
             }
 
             HomeUiAction.CleanResult -> {
-                _scanResult.update { null }
                 _photoResult.update { null }
+                _scanResults.update { emptyList() }
             }
 
             HomeUiAction.DismissCameraRequest -> {
@@ -114,21 +149,12 @@ class HomeViewModel(
 
     private fun scanCode(
         bitmap: Bitmap,
-    ): List<BarcodeReader.Result>? {
+    ): List<BarcodeReader.Result> {
         try {
-            val barcodeReader = BarcodeReader().apply {
-                options = BarcodeReader.Options(
-                    tryHarder = true,
-                     tryDenoise = true,
-                    tryInvert = true,
-                    tryRotate = true,
-                    tryDownscale = true,
-                )
-            }
             return barcodeReader.read(bitmap)
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            return emptyList()
         }
     }
 

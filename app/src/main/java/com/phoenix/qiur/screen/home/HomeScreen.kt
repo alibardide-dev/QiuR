@@ -3,7 +3,7 @@ package com.phoenix.qiur.screen.home
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,11 +15,14 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,14 +31,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,12 +74,14 @@ import zxingcpp.BarcodeReader
 fun HomeScreen(
     modifier: Modifier,
     snackbar: (String) -> Unit,
+    onPermissionGranted: () -> Unit,
     inputSource: InputSource,
     onChangeInput: (InputSource) -> Unit,
     surfaceRequest: SurfaceRequest?,
-    scanCode: (Bitmap) -> Unit,
+    scanCode: (Uri) -> Unit,
+    isProcessing: Boolean,
     resultPhoto: Bitmap?,
-    result:  List<BarcodeReader.Result>?,
+    results:  List<BarcodeReader.Result>,
     clearResult: () -> Unit,
     showCameraPopup: Boolean,
     dismissCameraRequest: () -> Unit,
@@ -93,6 +102,7 @@ fun HomeScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
                 dismissCameraRequest()
+                onPermissionGranted()
                 hasCameraAccess = true
                 onChangeInput(InputSource.CAMERA)
                 snackbar("We got live camera")
@@ -105,10 +115,7 @@ fun HomeScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let { uri ->
                 coroutineScope.launch(Dispatchers.IO) {
-                    val bitmap = context.contentResolver.openInputStream(uri).use { inputStream ->
-                        BitmapFactory.decodeStream(inputStream)
-                    }
-                    scanCode(bitmap)
+                    scanCode(uri)
                 }
             }
         }
@@ -118,15 +125,22 @@ fun HomeScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+        AnimatedVisibility(isProcessing) {
+            LinearProgressIndicator()
+        }
         AnimatedContent(resultPhoto != null) { hasPicture ->
             if (hasPicture) {
                 ResultScreen(
                     bitmap = resultPhoto,
+                    results = results,
                     onClickClose = { clearResult() }
                 )
             } else {
                 Crossfade(inputSource) { source ->
-                    Box(Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         HomeFloatingToolbar(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -143,15 +157,39 @@ fun HomeScreen(
                             }
                         )
                         when (source) {
-                            InputSource.STANDBY -> {}
+                            InputSource.STANDBY -> {
+                                CircularWavyProgressIndicator()
+                            }
 
-                            InputSource.CAMERA ->
+                            InputSource.CAMERA -> {
                                 surfaceRequest?.let { request ->
                                     CameraXViewfinder(
                                         surfaceRequest = request,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(
+                                                bottom = ScreenOffset + 96.dp,
+                                                top = 24.dp,
+                                                start = 24.dp,
+                                                end = 24.dp
+                                            )
+                                            .clip(RoundedCornerShape(12.dp))
                                     )
                                 }
+                                Box(
+                                    modifier = Modifier
+                                        .aspectRatio(1f)
+                                        .fillMaxWidth()
+                                        .offset(y = (-56).dp)
+                                        .padding(64.dp)
+                                        .clip(RoundedCornerShape(24.dp))
+                                        .border(
+                                            width = 2.dp,
+                                            color = MaterialTheme.colorScheme.primaryFixed,
+                                            shape = RoundedCornerShape(24.dp)
+                                        )
+                                )
+                            }
 
                             InputSource.PICTURE ->
                                 Column(
@@ -268,14 +306,47 @@ private fun PhotoPickerWidget(
 @Composable
 private fun ResultScreen(
     bitmap: Bitmap?,
+    results: List<BarcodeReader.Result>,
     onClickClose: () -> Unit
 ) {
     Box {
-        Image(
-            painter = rememberAsyncImagePainter(bitmap),
-            contentDescription = "Selected Photo",
-            modifier = Modifier.fillMaxSize()
-        )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(results) { code ->
+                Column(
+                    modifier = Modifier
+                        .animateItem()
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = "${code.format}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${code.text}",
+                        fontSize = 18.sp,
+                    )
+                }
+            }
+            item {
+                Image(
+                    painter = rememberAsyncImagePainter(bitmap),
+                    contentDescription = "Selected Photo",
+                    modifier = Modifier
+                        .animateItem()
+                        .fillParentMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                )
+            }
+        }
         IconButton(
             onClick = { onClickClose() },
             colors = IconButtonDefaults.iconButtonColors(
