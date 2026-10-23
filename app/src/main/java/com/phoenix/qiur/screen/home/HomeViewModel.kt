@@ -14,10 +14,12 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phoenix.qiur.data.PreferencesStore
+import com.phoenix.qiur.utils.CodeResult
 import com.phoenix.qiur.utils.applyExif
 import com.phoenix.qiur.utils.downscale
 import com.phoenix.qiur.utils.rotate
 import com.phoenix.qiur.utils.toBitmap
+import com.phoenix.qiur.utils.toCodeContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +38,7 @@ class HomeViewModel(
 
     private val _surfaceRequest = MutableStateFlow<SurfaceRequest?>(null)
     val surfaceRequest = _surfaceRequest.asStateFlow()
-    private val _scanResults = MutableStateFlow<List<BarcodeReader.Result>>(emptyList())
+    private val _scanResults = MutableStateFlow<List<CodeResult>>(emptyList())
     val scanResults = _scanResults.asStateFlow()
     private val _photoResult = MutableStateFlow<Bitmap?>(null)
     val photoResult = _photoResult.asStateFlow()
@@ -82,7 +84,9 @@ class HomeViewModel(
                         val result = scanCode(bitmap)
                         if (result.isNotEmpty()) {
                             _photoResult.update { bitmap.downscale() }
-                            _scanResults.update { result }
+                            _scanResults.update {
+                                result.map { CodeResult(it.format, it.text?.toCodeContent()) }
+                            }
                             pausedUntil = SystemClock.elapsedRealtime() + 1000
                         }
                     }
@@ -113,7 +117,10 @@ class HomeViewModel(
                         .applyExif(orientation)
 
                     _photoResult.update { bitmap.downscale() }
-                    _scanResults.update { scanCode(bitmap) }
+                    _scanResults.update {
+                        scanCode(bitmap)
+                            .map { CodeResult(it.format, it.text?.toCodeContent()) }
+                    }
                     _uiState.update { it.copy(isProcessing = false) }
                 }
             }

@@ -13,40 +13,23 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,17 +41,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
-import coil3.compose.rememberAsyncImagePainter
 import com.phoenix.qiur.R
 import com.phoenix.qiur.data.model.InputSource
+import com.phoenix.qiur.screen.home.component.CameraPermissionPopup
+import com.phoenix.qiur.screen.home.component.PhotoPickerScreen
+import com.phoenix.qiur.screen.home.component.ResultScreen
+import com.phoenix.qiur.utils.CodeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import zxingcpp.BarcodeReader
 
 @Composable
 fun HomeScreen(
@@ -81,7 +64,7 @@ fun HomeScreen(
     scanCode: (Uri) -> Unit,
     isProcessing: Boolean,
     resultPhoto: Bitmap?,
-    results:  List<BarcodeReader.Result>,
+    results:  List<CodeResult>,
     clearResult: () -> Unit,
     showCameraPopup: Boolean,
     dismissCameraRequest: () -> Unit,
@@ -202,13 +185,8 @@ fun HomeScreen(
                                             .fillMaxWidth()
                                             .weight(1f)
                                     ) {
-                                        PhotoPickerWidget(
-                                            pickMedia = {
-//                                    pickMedia.launch(
-//                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-//                                    )
-                                                openDocument.launch(arrayOf("image/*"))
-                                            }
+                                        PhotoPickerScreen(
+                                            pickMedia = { openDocument.launch(arrayOf("image/*")) }
                                         )
                                     }
                                     AnimatedVisibility(
@@ -261,144 +239,7 @@ private fun HomeFloatingToolbar(
     }
 }
 
-@Composable
-private fun PhotoPickerWidget(
-    pickMedia: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                painter = painterResource(R.drawable.home_blob),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
-                modifier = Modifier.size(144.dp)
-            )
-            Icon(
-                painter = painterResource(R.drawable.ic_qr_code),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(96.dp)
-            )
-        }
-        Spacer(Modifier.height(48.dp))
-        FloatingActionButton(
-            onClick = { pickMedia() }
-        ) {
-            Row(
-                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_photo),
-                    contentDescription = null,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Pick a Photo")
-            }
-        }
-    }
-}
 
-@Composable
-private fun ResultScreen(
-    bitmap: Bitmap?,
-    results: List<BarcodeReader.Result>,
-    onClickClose: () -> Unit
-) {
-    Box {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(results) { code ->
-                Column(
-                    modifier = Modifier
-                        .animateItem()
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "${code.format}",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Light
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "${code.text}",
-                        fontSize = 18.sp,
-                    )
-                }
-            }
-            item {
-                Image(
-                    painter = rememberAsyncImagePainter(bitmap),
-                    contentDescription = "Selected Photo",
-                    modifier = Modifier
-                        .animateItem()
-                        .fillParentMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                )
-            }
-        }
-        IconButton(
-            onClick = { onClickClose() },
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
-            ),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_close),
-                contentDescription = "Close popup",
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}
 
-@Composable
-private fun CameraPermissionPopup(
-    onClickDismiss: () -> Unit,
-    onClickAllow: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .widthIn(min = 280.dp, max = 560.dp)
-            .padding(horizontal = 24.dp, vertical = 16.dp)
-            .clip(RoundedCornerShape(12))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "Want to use camera?",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "QiuR respects your privacy. You can give camera permission for a seamless experience.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(16.dp))
-        Row(Modifier.align(Alignment.End)) {
-            TextButton(onClick = { onClickDismiss() }) {
-                Text("Dismiss")
-            }
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = { onClickAllow() }) {
-                Text("Allow Camera")
-            }
-        }
-    }
-}
+
 
