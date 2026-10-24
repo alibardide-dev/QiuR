@@ -4,6 +4,7 @@ import com.phoenix.qiur.data.model.InputSource
 
 data class HomeUiState(
     val isProcessing: Boolean = false,
+    val isUpdateAvailable: Boolean = false,
     val askCamera: Boolean = false,
     val inputSource: InputSource = InputSource.STANDBY
 )

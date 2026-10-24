@@ -12,6 +12,7 @@ import androidx.camera.core.SurfaceRequest
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -20,16 +21,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -58,13 +65,14 @@ fun HomeScreen(
     modifier: Modifier,
     snackbar: (String) -> Unit,
     onPermissionGranted: () -> Unit,
+    isUpdateAvailable: Boolean,
     inputSource: InputSource,
     onChangeInput: (InputSource) -> Unit,
     surfaceRequest: SurfaceRequest?,
     scanCode: (Uri) -> Unit,
     isProcessing: Boolean,
     resultPhoto: Bitmap?,
-    results:  List<CodeResult>,
+    results: List<CodeResult>,
     clearResult: () -> Unit,
     showCameraPopup: Boolean,
     dismissCameraRequest: () -> Unit,
@@ -124,11 +132,13 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        HomeFloatingToolbar(
+                        HomeToolbar(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .offset(y = -ScreenOffset)
                                 .zIndex(1f),
+                            isUpdateAvailable = isUpdateAvailable,
+                            inputSource = inputSource,
                             onClickCamera = {
                                 if (hasCameraAccess)
                                     onChangeInput(InputSource.CAMERA)
@@ -215,8 +225,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeFloatingToolbar(
+private fun HomeToolbar(
     modifier: Modifier,
+    isUpdateAvailable: Boolean,
+    inputSource: InputSource,
     onClickCamera: () -> Unit,
     onClickPicture: () -> Unit,
 ) {
@@ -224,13 +236,41 @@ private fun HomeFloatingToolbar(
         modifier = modifier,
         expanded = true
     ) {
-        IconButton(onClick = { onClickCamera() }) {
+        BadgedBox(
+            badge = {
+                if (isUpdateAvailable) Badge()
+            }
+        ) {
+            IconButton(onClick = {}) {
+                Icon(painterResource(R.drawable.ic_qr_code), contentDescription = null)
+            }
+        }
+        VerticalDivider(Modifier.height(48.dp))
+        IconButton(
+            onClick = { onClickCamera() },
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor =
+                    animateColorAsState(
+                        if(inputSource == InputSource.CAMERA) MaterialTheme.colorScheme.secondaryContainer
+                        else Color.Transparent
+                    ).value
+            )
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_camera),
                 contentDescription = "Switch to camera"
             )
         }
-        IconButton(onClick = { onClickPicture() }) {
+        IconButton(
+            onClick = { onClickPicture() },
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor =
+                    animateColorAsState(
+                        if(inputSource == InputSource.PICTURE) MaterialTheme.colorScheme.secondaryContainer
+                        else Color.Transparent
+                    ).value
+            )
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_photo),
                 contentDescription = "Switch to picture"

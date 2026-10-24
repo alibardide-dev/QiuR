@@ -13,8 +13,10 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.phoenix.qiur.data.PreferencesStore
+import com.phoenix.qiur.data.DataStoreManager
 import com.phoenix.qiur.utils.CodeResult
+import com.phoenix.qiur.utils.UpdateStateHolder
+import com.phoenix.qiur.utils.UpdateStatus
 import com.phoenix.qiur.utils.applyExif
 import com.phoenix.qiur.utils.downscale
 import com.phoenix.qiur.utils.rotate
@@ -30,7 +32,8 @@ import zxingcpp.BarcodeReader
 import java.util.concurrent.Executors
 
 class HomeViewModel(
-    private val preferencesStore: PreferencesStore
+    private val dataStoreManager: DataStoreManager,
+    private val updateStateHolder: UpdateStateHolder,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -54,10 +57,18 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            preferencesStore.getSettings().collect { settings ->
+            dataStoreManager.settings.collect { settings ->
                 _uiState.update {
                     it.copy(askCamera = settings.askCamera, inputSource = settings.source)
                 }
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            updateStateHolder.checkForUpdates()
+        }
+        viewModelScope.launch {
+            updateStateHolder.updateState.collect { state ->
+                _uiState.update { it.copy(isUpdateAvailable = state.updateStatus == UpdateStatus.AVAILABLE) }
             }
         }
     }
@@ -99,7 +110,7 @@ class HomeViewModel(
             is HomeUiAction.ChangeInput -> {
                 _uiState.update { it.copy(inputSource = action.inputSource) }
                 viewModelScope.launch {
-                    preferencesStore.changeInputSource(action.inputSource)
+                    dataStoreManager.changeInputSource(action.inputSource)
                 }
             }
 
@@ -133,7 +144,7 @@ class HomeViewModel(
             HomeUiAction.DismissCameraRequest -> {
                 _uiState.update { it.copy(askCamera = false) }
                 viewModelScope.launch {
-                    preferencesStore.dismissCameraPopup()
+                    dataStoreManager.dismissCameraPopup()
                 }
             }
         }

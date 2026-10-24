@@ -1,13 +1,12 @@
 package com.phoenix.qiur.utils
 
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
-
 object Constants {
 
     const val KEY_PREFS = "QiuR-prefs"
-    val PREFS_PERMISSION = booleanPreferencesKey("askCamera")
-    val PREFS_SOURCE = intPreferencesKey("source")
+    const val SETTING_UPDATE_AVAILABLE = "update_available"
+    const val SETTING_UPDATE_VERSION = "update_version"
+    const val SETTING_ASK_CAMERA_PERMISSION = "ask_camera_access"
+    const val SETTING_LAST_INPUT_SOURCE = "last_input_source"
 
     const val DATE_ALL_DAY = "yyyyMMdd"
     const val DATE_UTC = "yyyyMMdd'T'HHmmss'Z'"

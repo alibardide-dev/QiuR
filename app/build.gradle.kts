@@ -82,6 +82,9 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
+//    Retrofit
+    implementation(libs.retrofit2)
+    implementation(libs.retrofit2.gson)
 
 
     testImplementation(libs.junit)
