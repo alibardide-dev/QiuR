@@ -12,30 +12,42 @@ import androidx.camera.core.SurfaceRequest
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButtonShapes
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,10 +57,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import com.phoenix.qiur.R
@@ -64,6 +77,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     modifier: Modifier,
     snackbar: (String) -> Unit,
+    onClickMenu: () -> Unit,
     onPermissionGranted: () -> Unit,
     isUpdateAvailable: Boolean,
     inputSource: InputSource,
@@ -139,6 +153,7 @@ fun HomeScreen(
                                 .zIndex(1f),
                             isUpdateAvailable = isUpdateAvailable,
                             inputSource = inputSource,
+                            onClickMenu = { onClickMenu() },
                             onClickCamera = {
                                 if (hasCameraAccess)
                                     onChangeInput(InputSource.CAMERA)
@@ -229,11 +244,16 @@ private fun HomeToolbar(
     modifier: Modifier,
     isUpdateAvailable: Boolean,
     inputSource: InputSource,
+    onClickMenu: () -> Unit,
     onClickCamera: () -> Unit,
     onClickPicture: () -> Unit,
 ) {
     HorizontalFloatingToolbar(
         modifier = modifier,
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(
+            toolbarContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp),
+            toolbarContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
         expanded = true
     ) {
         BadgedBox(
@@ -241,40 +261,99 @@ private fun HomeToolbar(
                 if (isUpdateAvailable) Badge()
             }
         ) {
-            IconButton(onClick = {}) {
+            IconButton(
+                onClick = { onClickMenu() },
+                shapes = IconButtonShapes(
+                    CircleShape,
+                    CircleShape,
+                ),
+                modifier = Modifier.height(56.dp),
+            ) {
                 Icon(painterResource(R.drawable.ic_qr_code), contentDescription = null)
             }
         }
-        VerticalDivider(Modifier.height(48.dp))
-        IconButton(
-            onClick = { onClickCamera() },
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor =
-                    animateColorAsState(
-                        if(inputSource == InputSource.CAMERA) MaterialTheme.colorScheme.secondaryContainer
-                        else Color.Transparent
-                    ).value
-            )
+        Spacer(Modifier.width(8.dp))
+        VerticalDivider(
+            modifier = Modifier.height(56.dp),
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Spacer(Modifier.width(8.dp))
+        ToggleButton(
+            checked = inputSource == InputSource.CAMERA,
+            onCheckedChange = { onClickCamera() },
+            colors = ToggleButtonDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp),
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
+            shapes = ToggleButtonShapes(
+                CircleShape,
+                CircleShape,
+                CircleShape
+            ),
+            modifier = Modifier.height(56.dp)
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_camera),
-                contentDescription = "Switch to camera"
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_camera),
+                    contentDescription = "Camera"
+                )
+                AnimatedVisibility(
+                    visible = inputSource == InputSource.CAMERA,
+                    enter = expandHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                    exit = shrinkHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec())
+                ) {
+                    Text(
+                        text = "Camera",
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing)
+                    )
+                }
+            }
         }
-        IconButton(
-            onClick = { onClickPicture() },
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor =
-                    animateColorAsState(
-                        if(inputSource == InputSource.PICTURE) MaterialTheme.colorScheme.secondaryContainer
-                        else Color.Transparent
-                    ).value
-            )
+        Spacer(Modifier.width(8.dp))
+        ToggleButton(
+            checked = inputSource == InputSource.PICTURE,
+            onCheckedChange = { onClickPicture() },
+            colors = ToggleButtonDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp),
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
+            shapes = ToggleButtonShapes(
+                CircleShape,
+                CircleShape,
+                CircleShape
+            ),
+            modifier = Modifier.height(56.dp)
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_photo),
-                contentDescription = "Switch to picture"
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_photo),
+                    contentDescription = "Picture"
+                )
+                AnimatedVisibility(
+                    visible = inputSource == InputSource.PICTURE,
+                    enter = expandHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                    exit = shrinkHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec())
+                ) {
+                    Text(
+                        text = "Picture",
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing)
+                    )
+                }
+            }
         }
     }
 }

@@ -24,7 +24,10 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun HomeRoute() {
+fun HomeRoute(
+    navigateToAbout: () -> Unit,
+    navigateToSetting: () -> Unit,
+) {
     val homeViewModel: HomeViewModel = koinViewModel()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -64,6 +67,8 @@ fun HomeRoute() {
                 .fillMaxSize()
                 .padding(innerPadding),
             onPermissionGranted = { hasCameraPermission = true },
+            onClickMenu = { navigateToAbout() },
+            isUpdateAvailable = uiState.isUpdateAvailable,
             inputSource = uiState.inputSource,
             onChangeInput = { homeViewModel.onAction(HomeUiAction.ChangeInput(it)) },
             snackbar = { snackbar(it) },
