@@ -5,11 +5,11 @@ import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import com.phoenix.qiur.data.dao.HistoryDao
 import com.phoenix.qiur.data.model.History
-import com.phoenix.qiur.utils.Constants
+import com.phoenix.qiur.utils.DatabaseConstants
 
 @Database(
     entities = [History::class],
-    version = Constants.DB_VERSION,
+    version = DatabaseConstants.DB_VERSION,
     exportSchema = true,
 )
 @ColumnTypeConverters(

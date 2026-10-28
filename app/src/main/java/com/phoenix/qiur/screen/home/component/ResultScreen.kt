@@ -5,14 +5,11 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
 import android.graphics.Bitmap
-import android.net.wifi.WifiNetworkSuggestion
-import android.os.Build
 import android.provider.Settings
 import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,15 +50,15 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
-import coil3.compose.rememberAsyncImagePainter
-import coil3.compose.rememberConstraintsSizeResolver
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.size.SizeResolver
 import com.phoenix.qiur.R
 import com.phoenix.qiur.utils.CodeContent
 import com.phoenix.qiur.utils.CodeContentType
 import com.phoenix.qiur.utils.CodeResult
+import com.phoenix.qiur.utils.ParsedDate
+import com.phoenix.qiur.utils.connectWifi
+import com.phoenix.qiur.utils.parseIcalDate
 import kotlinx.coroutines.launch
 
 class CodeActions(
@@ -249,7 +246,7 @@ private fun ActionRow(vararg actions: CardAction) {
 private fun TextContent(content: CodeContent.Text, actions: CodeActions) {
     Field(content.type.label, content.raw)
     ActionRow(
-        CardAction("Search") { actions.search(content.raw) },
+        actionSearch(content.raw, actions.search),
         actionCopy(content.raw, actions.copy),
         actionShare(content.raw, actions.share)
     )
@@ -393,7 +390,8 @@ private fun CalendarContent(content: CodeContent.CalendarEvent, actions: CodeAct
         if (date == null) return fallback
         var flags = DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_YEAR
         flags =
-            if (date.allDay) flags or DateUtils.FORMAT_UTC else flags or DateUtils.FORMAT_SHOW_TIME
+            if (date.allDay) flags or DateUtils.FORMAT_UTC
+            else flags or DateUtils.FORMAT_SHOW_TIME
         return DateUtils.formatDateTime(context, date.millis, flags)
     }
 
@@ -421,7 +419,8 @@ private fun EpcContent(content: CodeContent.EpcPayment, actions: CodeActions) {
     Field("Info", content.info)
     ActionRow(
         CardAction("Copy IBAN") { actions.copy(content.iban) },
-        CardAction("Share") { actions.share(content.raw) })
+        actionShare(content.raw, actions.share)
+    )
 }
 
 @Composable
@@ -449,33 +448,4 @@ private fun CryptoContent(content: CodeContent.Crypto, actions: CodeActions) {
         actionOpen("Open wallet", content.raw.toUri(), actions.launch),
         CardAction("Copy address") { actions.copy(content.address) }
     )
-}
-
-fun connectWifi(
-    wifi: CodeContent.Wifi,
-    wifiLauncher: (Intent) -> Unit,
-    openWifiSetting: () -> Unit,
-) {
-    val canSuggest = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-            (wifi.security == CodeContent.WifiSecurity.NONE ||
-                    (wifi.security == CodeContent.WifiSecurity.WPA && !wifi.password.isNullOrEmpty()))
-    if (canSuggest) {
-        val builder = WifiNetworkSuggestion.Builder()
-            .setSsid(wifi.ssid)
-            .setIsHiddenSsid(wifi.hidden)
-        if (wifi.security == CodeContent.WifiSecurity.WPA) {
-            builder.setWpa2Passphrase(wifi.password!!)
-        }
-        val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).putParcelableArrayListExtra(
-            Settings.EXTRA_WIFI_NETWORK_LIST,
-            arrayListOf(builder.build())
-        )
-        try {
-            wifiLauncher(intent)
-        } catch (_: ActivityNotFoundException) {
-            openWifiSetting()
-        }
-    } else {
-        openWifiSetting()
-    }
 }

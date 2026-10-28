@@ -14,6 +14,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,13 +27,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -42,6 +47,7 @@ import androidx.compose.material3.IconButtonShapes
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
@@ -58,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,12 +73,10 @@ import androidx.core.content.ContextCompat
 import com.phoenix.qiur.R
 import com.phoenix.qiur.data.model.History
 import com.phoenix.qiur.data.model.InputSource
-import com.phoenix.qiur.screen.home.component.CameraPermissionPopup
 import com.phoenix.qiur.screen.home.component.HistoryActions
 import com.phoenix.qiur.screen.home.component.HistoryBottomSheet
 import com.phoenix.qiur.screen.home.component.MenuActions
 import com.phoenix.qiur.screen.home.component.MenuBottomSheet
-import com.phoenix.qiur.screen.home.component.PhotoPickerScreen
 import com.phoenix.qiur.screen.home.component.ResultScreen
 import com.phoenix.qiur.utils.CodeResult
 import kotlinx.coroutines.Dispatchers
@@ -250,7 +255,7 @@ fun HomeScreen(
 
     if (showMenu) {
         MenuBottomSheet(
-            setShowSheet = { showMenu = false },
+            onDismiss = { showMenu = false },
             actions = MenuActions(
                 setKeepHistory = { actions.setKeepHistory(it) },
                 openHistory = { showHistory = true },
@@ -262,7 +267,7 @@ fun HomeScreen(
     }
     if (showHistory) {
         HistoryBottomSheet(
-            setShowSheet = { showHistory = false },
+            onDismiss = { showHistory = false },
             entries = historyEntries,
             actions = HistoryActions(
                 open = {
@@ -395,7 +400,79 @@ private fun HomeToolbar(
     }
 }
 
+@Composable
+private fun CameraPermissionPopup(
+    onClickDismiss: () -> Unit,
+    onClickAllow: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .widthIn(min = 280.dp, max = 560.dp)
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .clip(RoundedCornerShape(12))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(24.dp)
+    ) {
+        Text(
+            text = "Want to use camera?",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = "QiuR respects your privacy. You can give camera permission for a seamless experience.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.align(Alignment.End)) {
+            TextButton(onClick = { onClickDismiss() }) {
+                Text("Dismiss")
+            }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = { onClickAllow() }) {
+                Text("Allow Camera")
+            }
+        }
+    }
+}
 
-
-
-
+@Composable
+private fun PhotoPickerScreen(pickMedia: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(R.drawable.home_blob),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
+                modifier = Modifier.size(144.dp)
+            )
+            Icon(
+                painter = painterResource(R.drawable.ic_qr_code),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(96.dp)
+            )
+        }
+        Spacer(Modifier.height(48.dp))
+        FloatingActionButton(
+            onClick = { pickMedia() }
+        ) {
+            Row(
+                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_photo),
+                    contentDescription = null,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Pick a Photo")
+            }
+        }
+    }
+}

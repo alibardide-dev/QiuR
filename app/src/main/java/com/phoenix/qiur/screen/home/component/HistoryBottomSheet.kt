@@ -4,7 +4,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +33,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.phoenix.qiur.R
 import com.phoenix.qiur.data.model.History
-import com.phoenix.qiur.ui.theme.firstListShape
 import com.phoenix.qiur.ui.theme.loneListShape
 import kotlinx.coroutines.launch
 
@@ -47,7 +45,7 @@ data class HistoryActions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryBottomSheet(
-    setShowSheet: (Boolean) -> Unit,
+    onDismiss: (Boolean) -> Unit,
     entries: List<History>,
     actions: HistoryActions,
     modifier: Modifier = Modifier
@@ -56,7 +54,7 @@ fun HistoryBottomSheet(
     val coroutineScope = rememberCoroutineScope()
 
     ModalBottomSheet(
-        onDismissRequest = { setShowSheet(false) },
+        onDismissRequest = { onDismiss(false) },
         sheetState = sheetState,
         modifier = modifier
     ) {

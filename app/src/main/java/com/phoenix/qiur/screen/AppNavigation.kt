@@ -13,10 +13,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
     NavHost(navController, startDestination = NavDestinations.Home) {
         composable<NavDestinations.Home> {
-            HomeRoute(
-                navigateToAbout = { navController.navigate(NavDestinations.About) },
-                navigateToSetting = { navController.navigate(NavDestinations.Setting) }
-            )
+            HomeRoute { navController.navigate(NavDestinations.About) }
         }
         composable<NavDestinations.About>  {
             AboutRoute { navController.popBackStack() }
@@ -27,8 +24,6 @@ fun AppNavigation() {
 sealed interface NavDestinations {
     @Serializable
     data object Home: NavDestinations
-    @Serializable
-    data object Setting: NavDestinations
     @Serializable
     data object About: NavDestinations
 }

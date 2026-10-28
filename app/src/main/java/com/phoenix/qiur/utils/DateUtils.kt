@@ -1,9 +1,9 @@
-package com.phoenix.qiur.screen.home.component
+package com.phoenix.qiur.utils
 
-import com.phoenix.qiur.utils.Constants
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+
 
 data class ParsedDate(val millis: Long, val allDay: Boolean)
 
@@ -14,20 +14,20 @@ fun parseIcalDate(valueString: String?): ParsedDate? {
     return runCatching {
         when {
             value.length == 8 -> ParsedDate(
-                SimpleDateFormat(Constants.DATE_ALL_DAY, Locale.getDefault()).apply {
+                SimpleDateFormat(DateFormatConstants.DATE_ALL_DAY, Locale.getDefault()).apply {
                     timeZone = utc
                 }.parse(value)!!.time,
                 allDay = true
             )
 
             value.endsWith("Z", ignoreCase = true) -> ParsedDate(
-                SimpleDateFormat(Constants.DATE_UTC, Locale.getDefault()).apply { timeZone = utc }
+                SimpleDateFormat(DateFormatConstants.DATE_UTC, Locale.getDefault()).apply { timeZone = utc }
                     .parse(value.uppercase())!!.time,
                 allDay = false
             )
 
             else -> ParsedDate(
-                SimpleDateFormat(Constants.DATE_LOCAL, Locale.getDefault()).parse(value)!!.time,
+                SimpleDateFormat(DateFormatConstants.DATE_LOCAL, Locale.getDefault()).parse(value)!!.time,
                 allDay = false
             )
         }

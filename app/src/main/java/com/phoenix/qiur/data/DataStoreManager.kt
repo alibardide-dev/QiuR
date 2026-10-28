@@ -10,22 +10,20 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.phoenix.qiur.data.model.InputSource
 import com.phoenix.qiur.data.model.UserSettings
-import com.phoenix.qiur.utils.Constants
+import com.phoenix.qiur.utils.DataStoreConstants
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(Constants.KEY_PREFS)
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(DataStoreConstants.KEY_PREFS)
 
 class DataStoreManager(private val context: Context) {
 
     companion object {
-        val UPDATE_AVAILABLE = booleanPreferencesKey(Constants.SETTING_UPDATE_AVAILABLE)
-        val UPDATE_VERSION = stringPreferencesKey(Constants.SETTING_UPDATE_VERSION)
-        val SHOW_CAMERA_POPUP = booleanPreferencesKey(Constants.SETTING_SHOW_CAMERA_POPUP)
-        val LAST_INPUT_SOURCE = intPreferencesKey(Constants.SETTING_LAST_INPUT_SOURCE)
-        val IS_HISTORY_ENABLED = booleanPreferencesKey(Constants.SETTING_IS_HISTORY_ENABLED)
+        val UPDATE_AVAILABLE = booleanPreferencesKey(DataStoreConstants.SETTING_UPDATE_AVAILABLE)
+        val UPDATE_VERSION = stringPreferencesKey(DataStoreConstants.SETTING_UPDATE_VERSION)
+        val SHOW_CAMERA_POPUP = booleanPreferencesKey(DataStoreConstants.SETTING_SHOW_CAMERA_POPUP)
+        val LAST_INPUT_SOURCE = intPreferencesKey(DataStoreConstants.SETTING_LAST_INPUT_SOURCE)
+        val IS_HISTORY_ENABLED = booleanPreferencesKey(DataStoreConstants.SETTING_IS_HISTORY_ENABLED)
     }
 
     val settings: Flow<UserSettings> =
@@ -45,13 +43,6 @@ class DataStoreManager(private val context: Context) {
             )
         }
 
-    suspend fun setUpdateState(available: Boolean, version: String?) {
-        context.dataStore.edit { prefs ->
-            prefs[UPDATE_AVAILABLE] = available
-            version?.let { prefs[UPDATE_VERSION] = version }
-        }
-    }
-
     val isUpdateAvailable: Flow<Boolean> = context.dataStore.data
         .map { prefs -> prefs[UPDATE_AVAILABLE] ?: false }
 
@@ -70,6 +61,13 @@ class DataStoreManager(private val context: Context) {
                 InputSource.PICTURE -> 0
                 InputSource.CAMERA -> 1
             }
+        }
+    }
+
+    suspend fun setUpdateState(available: Boolean, version: String?) {
+        context.dataStore.edit { prefs ->
+            prefs[UPDATE_AVAILABLE] = available
+            version?.let { prefs[UPDATE_VERSION] = version }
         }
     }
 

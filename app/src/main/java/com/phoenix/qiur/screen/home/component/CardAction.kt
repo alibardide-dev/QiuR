@@ -6,8 +6,12 @@ import android.provider.CalendarContract
 import android.provider.ContactsContract
 import androidx.core.net.toUri
 import com.phoenix.qiur.utils.CodeContent
+import com.phoenix.qiur.utils.ParsedDate
 
 class CardAction(val label: String, val onClick: () -> Unit)
+
+fun actionSearch(text: String, onSearch: (String) -> Unit) =
+    CardAction("Search") { onSearch(text) }
 
 fun actionCopy(text: String, onCopy: (String) -> Unit) =
     CardAction("Copy") { onCopy(text) }

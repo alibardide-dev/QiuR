@@ -2,8 +2,6 @@ package com.phoenix.qiur.screen.home.component
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,7 +47,7 @@ data class MenuActions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuBottomSheet(
-    setShowSheet: (Boolean) -> Unit,
+    onDismiss: (Boolean) -> Unit,
     actions: MenuActions,
     isHistoryEnabled: Boolean,
     isUpdateAvailable: Boolean,
@@ -60,7 +58,7 @@ fun MenuBottomSheet(
     val uriHandler = LocalUriHandler.current
 
     ModalBottomSheet(
-        onDismissRequest = { setShowSheet(false) },
+        onDismissRequest = { onDismiss(false) },
         sheetState = sheetState,
         modifier = modifier
     ) {
@@ -190,7 +188,7 @@ fun MenuBottomSheet(
                     .clickable {
                         coroutineScope.launch {
                             sheetState.hide()
-                            setShowSheet(false)
+                            onDismiss(false)
                         }
                         actions.openAbout()
                     }

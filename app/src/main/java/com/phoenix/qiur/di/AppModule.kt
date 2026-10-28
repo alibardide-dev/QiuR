@@ -7,7 +7,7 @@ import com.phoenix.qiur.data.DataStoreManager
 import com.phoenix.qiur.data.dao.HistoryDao
 import com.phoenix.qiur.screen.about.AboutViewModel
 import com.phoenix.qiur.screen.home.HomeViewModel
-import com.phoenix.qiur.utils.Constants
+import com.phoenix.qiur.utils.DatabaseConstants
 import com.phoenix.qiur.utils.UpdateStateHolder
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -15,7 +15,7 @@ import org.koin.dsl.module
 
 val dataModule = module {
     single {
-        Room.databaseBuilder<AppDatabase>(androidContext(), Constants.DB_NAME)
+        Room.databaseBuilder<AppDatabase>(androidContext(), DatabaseConstants.DB_NAME)
             .setDriver(AndroidSQLiteDriver())
             .build()
     }

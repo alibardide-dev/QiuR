@@ -2,12 +2,7 @@ package com.phoenix.qiur.screen.home
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Typeface
 import android.os.SystemClock
-import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -40,7 +35,9 @@ import kotlinx.coroutines.launch
 import zxingcpp.BarcodeReader
 import java.util.Date
 import java.util.concurrent.Executors
-import androidx.core.graphics.createBitmap
+import com.phoenix.qiur.utils.render1D
+import com.phoenix.qiur.utils.renderMatrix
+import com.phoenix.qiur.utils.withLabel
 
 class HomeViewModel(
     private val dataStoreManager: DataStoreManager,
@@ -81,7 +78,6 @@ class HomeViewModel(
         }
         viewModelScope.launch {
             _history.update { historyDao.getAllEntries() }
-            Log.w("DATABASE", history.value.toString())
             updateStateHolder.updateState.collect { state ->
                 _uiState.update { it.copy(isUpdateAvailable = state.updateStatus == UpdateStatus.AVAILABLE) }
             }
@@ -241,68 +237,6 @@ class HomeViewModel(
         }
 
         return null
-    }
-
-    private fun Bitmap.withLabel(text: String, textSizePx: Float = 36f): Bitmap {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            textSize = textSizePx
-            textAlign = Paint.Align.CENTER
-            typeface = Typeface.MONOSPACE
-        }
-//        val extra = (textSizePx * 1.6f).toInt()
-//        val out = createBitmap(width, height + extra)
-//        Canvas(out).apply {
-//            drawColor(Color.WHITE)
-//            drawBitmap(this@withLabel, 0f, 0f, null)
-//            drawText(text, width / 2f, height + textSizePx * 1.1f, paint)
-//        }
-        val srcW = width
-        val srcH = height
-        val extra = (textSizePx * 1.6f).toInt()
-        val out = createBitmap(srcW, srcH + extra)
-        Canvas(out).apply {
-            drawColor(Color.WHITE)
-            drawBitmap(this@withLabel, 0f, 0f, null)
-            drawText(text, srcW / 2f, srcH + textSizePx * 1.1f, paint)
-        }
-        return out
-    }
-
-    private fun render1D(
-        bars: BooleanArray,
-        scale: Int = 4,
-        barHeight: Int = 160,
-        quietModules: Int = 10,
-    ): Bitmap {
-        val w = (bars.size + quietModules * 2) * scale
-        val px = IntArray(w * barHeight) { Color.WHITE }
-        for (i in bars.indices) {
-            if (!bars[i]) continue
-            for (dx in 0 until scale) {
-                val x = (i + quietModules) * scale + dx
-                for (y in 0 until barHeight) px[y * w + x] = Color.BLACK
-            }
-        }
-        return Bitmap.createBitmap(px, w, barHeight, Bitmap.Config.ARGB_8888)
-    }
-
-    fun renderMatrix(
-        modules: Int,
-        isDark: (x: Int, y: Int) -> Boolean,
-        scale: Int = 10,
-        quietModules: Int = 4,
-    ): Bitmap {
-        val size = (modules + quietModules * 2) * scale
-        val px = IntArray(size * size) { Color.WHITE }
-        for (y in 0 until modules) for (x in 0 until modules) {
-            if (!isDark(x, y)) continue
-            val ox = (x + quietModules) * scale
-            val oy = (y + quietModules) * scale
-            for (dy in 0 until scale) for (dx in 0 until scale)
-                px[(oy + dy) * size + ox + dx] = Color.BLACK
-        }
-        return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
     }
 
     private fun updateScanResults(codeResults: List<CodeResult>) {

@@ -26,7 +26,6 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     navigateToAbout: () -> Unit,
-    navigateToSetting: () -> Unit,
 ) {
     val homeViewModel: HomeViewModel = koinViewModel()
     val context = LocalContext.current
@@ -51,7 +50,7 @@ fun HomeRoute(
         coroutineScope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
-                message = message, withDismissAction = true, duration = SnackbarDuration.Indefinite
+                message = message, withDismissAction = true, duration = SnackbarDuration.Long
             )
         }
     }
@@ -60,8 +59,7 @@ fun HomeRoute(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { innerPadding ->
+        snackbarHost = { SnackbarHost(snackbarHostState) }) { innerPadding ->
         HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
@@ -72,12 +70,7 @@ fun HomeRoute(
                 setKeepHistory = { homeViewModel.onAction(HomeUiAction.SetHistoryEnabled(it)) },
                 setInputSource = { homeViewModel.onAction(HomeUiAction.ChangeInput(it)) },
                 scanCodeFromUri = {
-                    homeViewModel.onAction(
-                        HomeUiAction.ScanCodeFromUri(
-                            context,
-                            it
-                        )
-                    )
+                    homeViewModel.onAction(HomeUiAction.ScanCodeFromUri(context, it))
                 },
                 generateQRCode = { raw, format ->
                     homeViewModel.onAction(HomeUiAction.GenerateQRCode(raw, format))
