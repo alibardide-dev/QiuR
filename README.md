@@ -13,21 +13,31 @@ To download, you can checkout [latest release](https://github.com/alibardide-dev
 
 [<img src="docs/screenshot_1.png" width="200px" alt="Picture">](docs/screenshot_1.jpg)
 [<img src="docs/screenshot_2.png" width="200px" alt="Camera">](docs/screenshot_2.jpg)
-[<img src="docs/screenshot_3.png" width="200px" alt="Link QR">](docs/screenshot_3.jpg)
-[<img src="docs/screenshot_4.png" width="200px" alt="Email QR">](docs/screenshot_4.jpg)
+[<img src="docs/screenshot_3.png" width="200px" alt="QR Code">](docs/screenshot_3.jpg)
+[<img src="docs/screenshot_4.png" width="200px" alt="Barcode">](docs/screenshot_4.jpg)
 [<img src="docs/screenshot_5.png" width="200px" alt="About">](docs/screenshot_5.jpg)
 
 </div>
 
 # Features
 
-- [X] Scan codes
-- [X] Scan with pictures
+- [X] Scan from pictures
 - [X] Scan with camera
-- [X] Smooth U
+- [X] Smooth UI
 - [X] In-app updater
-- [ ] History
+- [X] History
 - [ ] Create QR codes
+
+# Tech Stack
+
+- Kotlin for programming android application
+- Jetpack compose to design declarative android ui
+- Koin for dependency injection
+- DataStore to save data
+- CameraX for... camera
+- zxing for scanning codes
+- QRose for generating QR / Barcode
+- Material3 design
 
 # Repo Structure
 
@@ -35,19 +45,19 @@ To download, you can checkout [latest release](https://github.com/alibardide-dev
 ├── app/src/main/
 │   ├── java/com/phoenix/booklet/
 │   │   ├── data/ # Handle data related tasks (Network, Local) 
-│   │   ├── di/
-│   │   │   ├── AppModule.kt
+│   │   ├── di/ AppModule.kt
 │   │   ├── screen/ # Directory which stores application screens
 │   │   │   ├── about/...
 │   │   │   ├── home/...
-│   │   │   ├── settings/...
 │   │   │   ├── AppNavigation.kt
 │   │   ├── ui/theme/
 │   │   ├── utils/
+│   │   │   ├  BitmapUtils.kt
 │   │   │   ├  Constants.kt
-│   │   │   ├  ImageUtils.kt
+│   │   │   ├  DateUtils.kt
 │   │   │   ├  ScanUtils.kt
 │   │   │   ├  UpdateHandler.kt
+│   │   │   ├  WifiUtils.kt
 │   │   ├   BaseApplication
 │   │   ├   MainActivity.kt
 │   ├── res/ # Resources
@@ -60,16 +70,6 @@ To download, you can checkout [latest release](https://github.com/alibardide-dev
 ├── LICENSE
 └── README.md
 ```
-
-# Tech Stack
-
-- Kotlin for programming android application
-- Jetpack compose to design declaritive android ui
-- Koin for dependency injection
-- DataStore to save data
-- CameraX for... camera
-- zxing for scanning codes
-- Material3 design
 
 # Setup
 
