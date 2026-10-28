@@ -37,7 +37,7 @@ fun HomeRoute(
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val surfaceRequest by homeViewModel.surfaceRequest.collectAsStateWithLifecycle()
     val results by homeViewModel.scanResults.collectAsStateWithLifecycle()
-    val photoResult by homeViewModel.photoResult.collectAsStateWithLifecycle()
+    val history by homeViewModel.history.collectAsStateWithLifecycle()
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -66,20 +66,32 @@ fun HomeRoute(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            onPermissionGranted = { hasCameraPermission = true },
-            onClickMenu = { navigateToAbout() },
-            isUpdateAvailable = uiState.isUpdateAvailable,
-            inputSource = uiState.inputSource,
-            onChangeInput = { homeViewModel.onAction(HomeUiAction.ChangeInput(it)) },
+            uiState = uiState,
+            actions = HomeActions(
+                onPermissionGranted = { hasCameraPermission = true },
+                setKeepHistory = { homeViewModel.onAction(HomeUiAction.SetHistoryEnabled(it)) },
+                setInputSource = { homeViewModel.onAction(HomeUiAction.ChangeInput(it)) },
+                scanCodeFromUri = {
+                    homeViewModel.onAction(
+                        HomeUiAction.ScanCodeFromUri(
+                            context,
+                            it
+                        )
+                    )
+                },
+                generateQRCode = { raw, format ->
+                    homeViewModel.onAction(HomeUiAction.GenerateQRCode(raw, format))
+                },
+                clearResult = { homeViewModel.onAction(HomeUiAction.CleanResult) },
+                dismissCameraRequest = { homeViewModel.onAction(HomeUiAction.DismissCameraRequest) },
+                openAbout = { navigateToAbout() },
+                deleteHistoryEntry = { homeViewModel.onAction(HomeUiAction.DeleteHistoryEntry(it)) },
+                cleanHistory = { homeViewModel.onAction(HomeUiAction.CleanHistory) },
+            ),
             snackbar = { snackbar(it) },
             surfaceRequest = surfaceRequest,
-            scanCode = { homeViewModel.onAction(HomeUiAction.ScanCodeFromUri(context, it)) },
-            isProcessing = uiState.isProcessing,
-            resultPhoto = photoResult,
             results = results,
-            clearResult = { homeViewModel.onAction(HomeUiAction.CleanResult) },
-            showCameraPopup = uiState.askCamera,
-            dismissCameraRequest = { homeViewModel.onAction(HomeUiAction.DismissCameraRequest) },
+            historyEntries = history,
         )
     }
 }

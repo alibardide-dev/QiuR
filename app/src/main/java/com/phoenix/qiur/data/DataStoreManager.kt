@@ -12,6 +12,8 @@ import com.phoenix.qiur.data.model.InputSource
 import com.phoenix.qiur.data.model.UserSettings
 import com.phoenix.qiur.utils.Constants
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(Constants.KEY_PREFS)
@@ -21,22 +23,25 @@ class DataStoreManager(private val context: Context) {
     companion object {
         val UPDATE_AVAILABLE = booleanPreferencesKey(Constants.SETTING_UPDATE_AVAILABLE)
         val UPDATE_VERSION = stringPreferencesKey(Constants.SETTING_UPDATE_VERSION)
-        val ASK_CAMERA_PERMISSION = booleanPreferencesKey(Constants.SETTING_ASK_CAMERA_PERMISSION)
+        val SHOW_CAMERA_POPUP = booleanPreferencesKey(Constants.SETTING_SHOW_CAMERA_POPUP)
         val LAST_INPUT_SOURCE = intPreferencesKey(Constants.SETTING_LAST_INPUT_SOURCE)
+        val IS_HISTORY_ENABLED = booleanPreferencesKey(Constants.SETTING_IS_HISTORY_ENABLED)
     }
 
     val settings: Flow<UserSettings> =
         context.dataStore.data.map { preferences ->
-            val askCameraPermission = preferences[ASK_CAMERA_PERMISSION]
+            val showCameraPopup = preferences[SHOW_CAMERA_POPUP]
             val lastInputSource = preferences[LAST_INPUT_SOURCE]
+            val isHistoryEnabled = preferences[IS_HISTORY_ENABLED]
 
             UserSettings(
-                askCamera = askCameraPermission ?: true,
+                showCameraPopup = showCameraPopup ?: true,
                 source =
                     lastInputSource?.let {
                         if (lastInputSource == 0) InputSource.PICTURE
                         else InputSource.CAMERA
-                    } ?: InputSource.PICTURE
+                    } ?: InputSource.PICTURE,
+                isHistoryEnabled = isHistoryEnabled ?: false
             )
         }
 
@@ -55,7 +60,7 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun dismissCameraPopup() =
         context.dataStore.edit { preferences ->
-            preferences[ASK_CAMERA_PERMISSION] = false
+            preferences[SHOW_CAMERA_POPUP] = false
         }
 
     suspend fun changeInputSource(inputSource: InputSource) {
@@ -67,5 +72,10 @@ class DataStoreManager(private val context: Context) {
             }
         }
     }
+
+    suspend fun setHistoryEnabled(isEnabled: Boolean) =
+        context.dataStore.edit { preferences ->
+            preferences[IS_HISTORY_ENABLED] = isEnabled
+        }
 
 }

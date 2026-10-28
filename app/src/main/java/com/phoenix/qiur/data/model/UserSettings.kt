@@ -1,8 +1,9 @@
 package com.phoenix.qiur.data.model
 
 data class UserSettings(
-    val askCamera: Boolean,
+    val showCameraPopup: Boolean,
     val source: InputSource,
+    val isHistoryEnabled: Boolean,
 )
 
 enum class InputSource {

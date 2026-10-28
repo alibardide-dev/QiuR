@@ -17,10 +17,12 @@ navigation = "2.10.2"
 exifinterface = "1.3.6"
 dataStore = "1.2.1"
 zxing = "3.1.1"
+qrose = "1.3.1"
 koin = "4.2.2"
 coil = "3.6.3"
 camera = "1.6.2"
 retrofit = "3.0.0"
+room = "3.0.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,6 +47,9 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore"}
 # zxing
 zxing-android = { module = "io.github.zxing-cpp:android", version.ref = "zxing" }
+# QRose
+qrose-matrix = { module = "io.github.alexzhirkevich:qrose-encoder-matrix", version.ref = "qrose" }
+qrose-oned = { module = "io.github.alexzhirkevich:qrose-encoder-oned", version.ref = "qrose" }
 # Coil
 coil-kt = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 # Koin
@@ -61,6 +66,9 @@ androidx-camera-compose = { module = "androidx.camera:camera-compose", version.r
 # Retrofit
 retrofit2 = { module = "com.squareup.retrofit2:retrofit", version.ref="retrofit" }
 retrofit2-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref="retrofit" }
+# Room
+room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
+room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

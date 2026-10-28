@@ -13,9 +13,10 @@ fun AboutRoute(
     val uiState by aboutViewModel.uiState.collectAsStateWithLifecycle()
 
     AboutScreen(
-        onClickBack = { navigateBack() },
-        onClickUpdate = { aboutViewModel.onAction(AboutUiAction.CheckForUpdates) },
-        updateStatus = uiState.updateStatus,
-        nextUpdateVersion = uiState.nextUpdateVersion,
+        uiState = uiState,
+        actions = AboutActions(
+            navigateBack = { navigateBack() },
+            update = { aboutViewModel.onAction(AboutUiAction.CheckForUpdates) },
+        ),
     )
 }

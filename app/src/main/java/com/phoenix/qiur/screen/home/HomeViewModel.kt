@@ -2,7 +2,12 @@ package com.phoenix.qiur.screen.home
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.SystemClock
+import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -14,11 +19,15 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phoenix.qiur.data.DataStoreManager
+import com.phoenix.qiur.data.dao.HistoryDao
+import com.phoenix.qiur.data.model.History
 import com.phoenix.qiur.utils.CodeResult
 import com.phoenix.qiur.utils.UpdateStateHolder
 import com.phoenix.qiur.utils.UpdateStatus
 import com.phoenix.qiur.utils.applyExif
+import com.phoenix.qiur.utils.barcodeEncoder
 import com.phoenix.qiur.utils.downscale
+import com.phoenix.qiur.utils.matrixEncoder
 import com.phoenix.qiur.utils.rotate
 import com.phoenix.qiur.utils.toBitmap
 import com.phoenix.qiur.utils.toCodeContent
@@ -29,11 +38,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zxingcpp.BarcodeReader
+import java.util.Date
 import java.util.concurrent.Executors
+import androidx.core.graphics.createBitmap
 
 class HomeViewModel(
     private val dataStoreManager: DataStoreManager,
     private val updateStateHolder: UpdateStateHolder,
+    private val historyDao: HistoryDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -43,14 +55,11 @@ class HomeViewModel(
     val surfaceRequest = _surfaceRequest.asStateFlow()
     private val _scanResults = MutableStateFlow<List<CodeResult>>(emptyList())
     val scanResults = _scanResults.asStateFlow()
-    private val _photoResult = MutableStateFlow<Bitmap?>(null)
-    val photoResult = _photoResult.asStateFlow()
+    private val _history = MutableStateFlow<List<History>>(emptyList())
+    val history = _history.asStateFlow()
     private val barcodeReader = BarcodeReader().apply {
         options = BarcodeReader.Options(
             tryHarder = true,
-//            tryDenoise = true,
-//            tryInvert = true,
-//            tryRotate = true,
             tryDownscale = true,
         )
     }
@@ -59,7 +68,11 @@ class HomeViewModel(
         viewModelScope.launch {
             dataStoreManager.settings.collect { settings ->
                 _uiState.update {
-                    it.copy(askCamera = settings.askCamera, inputSource = settings.source)
+                    it.copy(
+                        showCameraPopup = settings.showCameraPopup,
+                        inputSource = settings.source,
+                        isHistoryEnabled = settings.isHistoryEnabled
+                    )
                 }
             }
         }
@@ -67,6 +80,8 @@ class HomeViewModel(
             updateStateHolder.checkForUpdates()
         }
         viewModelScope.launch {
+            _history.update { historyDao.getAllEntries() }
+            Log.w("DATABASE", history.value.toString())
             updateStateHolder.updateState.collect { state ->
                 _uiState.update { it.copy(isUpdateAvailable = state.updateStatus == UpdateStatus.AVAILABLE) }
             }
@@ -79,7 +94,8 @@ class HomeViewModel(
         setSurfaceProvider { request -> _surfaceRequest.value = request }
     }
 
-    @Volatile private var pausedUntil = 0L
+    @Volatile
+    private var pausedUntil = 0L
     private val analysisUseCase = ImageAnalysis.Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .build()
@@ -92,12 +108,12 @@ class HomeViewModel(
                     }
                     imageProxy.use { proxy ->
                         val bitmap = proxy.toBitmap().rotate(proxy.imageInfo.rotationDegrees)
-                        val result = scanCode(bitmap)
+                        val result = bitmap.scanForCode()
                         if (result.isNotEmpty()) {
-                            _photoResult.update { bitmap.downscale() }
-                            _scanResults.update {
+                            _uiState.update { it.copy(photoResult = bitmap.downscale()) }
+                            updateScanResults(
                                 result.map { CodeResult(it.format, it.text?.toCodeContent()) }
-                            }
+                            )
                             pausedUntil = SystemClock.elapsedRealtime() + 1000
                         }
                     }
@@ -117,34 +133,67 @@ class HomeViewModel(
             is HomeUiAction.ScanCodeFromUri -> {
                 viewModelScope.launch(Dispatchers.Default) {
                     _uiState.update { it.copy(isProcessing = true) }
-                    val orientation = action.context.contentResolver.openInputStream(action.uri).use {
-                        ExifInterface(it!!).getAttributeInt(
-                            ExifInterface.TAG_ORIENTATION,
-                            ExifInterface.ORIENTATION_NORMAL
-                        )
-                    }
+                    val orientation =
+                        action.context.contentResolver.openInputStream(action.uri).use {
+                            ExifInterface(it!!).getAttributeInt(
+                                ExifInterface.TAG_ORIENTATION,
+                                ExifInterface.ORIENTATION_NORMAL
+                            )
+                        }
                     val bitmap = action.uri
                         .toBitmap(action.context)
                         .applyExif(orientation)
 
-                    _photoResult.update { bitmap.downscale() }
-                    _scanResults.update {
-                        scanCode(bitmap)
+                    _uiState.update { it.copy(photoResult = bitmap.downscale()) }
+                    updateScanResults(
+                        bitmap.scanForCode()
                             .map { CodeResult(it.format, it.text?.toCodeContent()) }
-                    }
+                    )
+
                     _uiState.update { it.copy(isProcessing = false) }
                 }
             }
 
             HomeUiAction.CleanResult -> {
-                _photoResult.update { null }
+                _uiState.update { it.copy(photoResult = null) }
                 _scanResults.update { emptyList() }
             }
 
             HomeUiAction.DismissCameraRequest -> {
-                _uiState.update { it.copy(askCamera = false) }
+                _uiState.update { it.copy(showCameraPopup = false) }
                 viewModelScope.launch {
                     dataStoreManager.dismissCameraPopup()
+                }
+            }
+
+            is HomeUiAction.SetHistoryEnabled -> {
+                _uiState.update { it.copy(isHistoryEnabled = action.isEnabled) }
+                viewModelScope.launch {
+                    dataStoreManager.setHistoryEnabled(action.isEnabled)
+                }
+            }
+
+            is HomeUiAction.GenerateQRCode -> {
+                viewModelScope.launch {
+                    val bitmap = generateBitmapCode(action.raw, action.format)
+                    _uiState.update { it.copy(photoResult = bitmap) }
+                    updateScanResults(
+                        listOf(CodeResult(action.format, action.raw.toCodeContent()))
+                    )
+                }
+            }
+
+            is HomeUiAction.DeleteHistoryEntry -> {
+                viewModelScope.launch {
+                    historyDao.deleteEntry(action.history)
+                    _history.update { historyDao.getAllEntries() }
+                }
+            }
+
+            HomeUiAction.CleanHistory -> {
+                viewModelScope.launch {
+                    historyDao.deleteAll()
+                    _history.update { emptyList() }
                 }
             }
         }
@@ -165,14 +214,120 @@ class HomeViewModel(
         }
     }
 
-    private fun scanCode(
-        bitmap: Bitmap,
-    ): List<BarcodeReader.Result> {
+    private fun Bitmap.scanForCode(): List<BarcodeReader.Result> {
         try {
-            return barcodeReader.read(bitmap)
+            return barcodeReader.read(this)
         } catch (e: Exception) {
             e.printStackTrace()
             return emptyList()
+        }
+    }
+
+    private fun generateBitmapCode(
+        content: String,
+        format: BarcodeReader.Format,
+    ): Bitmap? {
+        val barcodeEncoder = barcodeEncoder(format)
+        val matrixEncoder = matrixEncoder(format)
+        if (barcodeEncoder == null && matrixEncoder == null)
+            throw Exception("This is not a code stupid, you're no supposed to reach here")
+
+        barcodeEncoder?.let {
+            return render1D(it.encode(content)).withLabel(content)
+        }
+        matrixEncoder?.let {
+            val code = it.encode(content)
+            return renderMatrix(code.width, { x, y -> code[x, y] })
+        }
+
+        return null
+    }
+
+    private fun Bitmap.withLabel(text: String, textSizePx: Float = 36f): Bitmap {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = textSizePx
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.MONOSPACE
+        }
+//        val extra = (textSizePx * 1.6f).toInt()
+//        val out = createBitmap(width, height + extra)
+//        Canvas(out).apply {
+//            drawColor(Color.WHITE)
+//            drawBitmap(this@withLabel, 0f, 0f, null)
+//            drawText(text, width / 2f, height + textSizePx * 1.1f, paint)
+//        }
+        val srcW = width
+        val srcH = height
+        val extra = (textSizePx * 1.6f).toInt()
+        val out = createBitmap(srcW, srcH + extra)
+        Canvas(out).apply {
+            drawColor(Color.WHITE)
+            drawBitmap(this@withLabel, 0f, 0f, null)
+            drawText(text, srcW / 2f, srcH + textSizePx * 1.1f, paint)
+        }
+        return out
+    }
+
+    private fun render1D(
+        bars: BooleanArray,
+        scale: Int = 4,
+        barHeight: Int = 160,
+        quietModules: Int = 10,
+    ): Bitmap {
+        val w = (bars.size + quietModules * 2) * scale
+        val px = IntArray(w * barHeight) { Color.WHITE }
+        for (i in bars.indices) {
+            if (!bars[i]) continue
+            for (dx in 0 until scale) {
+                val x = (i + quietModules) * scale + dx
+                for (y in 0 until barHeight) px[y * w + x] = Color.BLACK
+            }
+        }
+        return Bitmap.createBitmap(px, w, barHeight, Bitmap.Config.ARGB_8888)
+    }
+
+    fun renderMatrix(
+        modules: Int,
+        isDark: (x: Int, y: Int) -> Boolean,
+        scale: Int = 10,
+        quietModules: Int = 4,
+    ): Bitmap {
+        val size = (modules + quietModules * 2) * scale
+        val px = IntArray(size * size) { Color.WHITE }
+        for (y in 0 until modules) for (x in 0 until modules) {
+            if (!isDark(x, y)) continue
+            val ox = (x + quietModules) * scale
+            val oy = (y + quietModules) * scale
+            for (dy in 0 until scale) for (dx in 0 until scale)
+                px[(oy + dy) * size + ox + dx] = Color.BLACK
+        }
+        return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun updateScanResults(codeResults: List<CodeResult>) {
+        _scanResults.update { codeResults }
+        if (uiState.value.isHistoryEnabled) {
+            viewModelScope.launch {
+                addHistory(codeResults)
+                _history.update { historyDao.getAllEntries() }
+            }
+        }
+    }
+
+    private suspend fun addHistory(codeContents: List<CodeResult>) {
+        if (uiState.value.isHistoryEnabled) {
+            codeContents.forEach { code ->
+                historyDao.insertEntry(
+                    History(
+                        raw = code.content!!.raw,
+                        format = code.format.toString(),
+                        type = code.content.type.toString(),
+                        createdAt = Date(System.currentTimeMillis()),
+                        updatedAt = Date(System.currentTimeMillis())
+                    )
+                )
+            }
         }
     }
 

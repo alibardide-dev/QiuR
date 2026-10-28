@@ -20,8 +20,8 @@ android {
         minSdk = 24
         //noinspection EditedTargetSdkVersion
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.0.0"
+        versionCode = 10
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -69,6 +69,9 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 //    zxing
     implementation(libs.zxing.android)
+//    QRose
+    implementation(libs.qrose.matrix)
+    implementation(libs.qrose.oned)
 //    Koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
@@ -85,7 +88,10 @@ dependencies {
 //    Retrofit
     implementation(libs.retrofit2)
     implementation(libs.retrofit2.gson)
-
+//    Room
+    implementation(libs.room3.runtime)
+    ksp(libs.room3.compiler)
+//    QR Kotlin
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

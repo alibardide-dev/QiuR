@@ -47,14 +47,20 @@ import androidx.compose.ui.unit.sp
 import com.phoenix.qiur.BuildConfig
 import com.phoenix.qiur.R
 import com.phoenix.qiur.screen.about.component.LicenseBottomSheet
+import com.phoenix.qiur.ui.theme.firstListShape
+import com.phoenix.qiur.ui.theme.lastListShape
+import com.phoenix.qiur.ui.theme.loneListShape
 import com.phoenix.qiur.utils.UpdateStatus
+
+data class AboutActions(
+    val navigateBack: () -> Unit,
+    val update: () -> Unit,
+)
 
 @Composable
 fun AboutScreen(
-    onClickBack: () -> Unit,
-    onClickUpdate: () -> Unit,
-    updateStatus: UpdateStatus,
-    nextUpdateVersion: String,
+    uiState: AboutUiState,
+    actions: AboutActions,
 ) {
     val uriHandler = LocalUriHandler.current
     var showLicense by rememberSaveable { mutableStateOf(false) }
@@ -67,7 +73,7 @@ fun AboutScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = { onClickBack() },
+                        onClick = { actions.navigateBack() },
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Icon(
@@ -89,14 +95,7 @@ fun AboutScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 4.dp,
-                            bottomStart = 4.dp
-                        )
-                    )
+                    .clip(firstListShape)
                     .background(MaterialTheme.colorScheme.surfaceColorAtElevation(32.dp))
                     .padding(vertical = 12.dp, horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,21 +129,14 @@ fun AboutScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 4.dp,
-                            topEnd = 4.dp,
-                            bottomStart = 16.dp,
-                            bottomEnd = 16.dp
-                        )
-                    )
+                    .clip(lastListShape)
                     .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                     .clickable {
-                        if (updateStatus != UpdateStatus.CHECKING) {
-                            if (updateStatus == UpdateStatus.AVAILABLE) {
+                        if (uiState.updateStatus != UpdateStatus.CHECKING) {
+                            if (uiState.updateStatus == UpdateStatus.AVAILABLE) {
                                 uriHandler.openUri("https://github.com/alibardide-dev/QiuR/releases/latest")
                             } else {
-                                onClickUpdate()
+                                actions.update()
                             }
                         }
                     }
@@ -154,11 +146,11 @@ fun AboutScreen(
             ) {
                 BadgedBox(
                     badge = {
-                        if (updateStatus == UpdateStatus.AVAILABLE)
+                        if (uiState.updateStatus == UpdateStatus.AVAILABLE)
                             Badge()
                     }
                 ) {
-                    Crossfade(updateStatus == UpdateStatus.CHECKING) { target ->
+                    Crossfade(uiState.updateStatus == UpdateStatus.CHECKING) { target ->
                         if (target) {
                             CircularProgressIndicator(Modifier.size(24.dp))
                         } else {
@@ -174,11 +166,11 @@ fun AboutScreen(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text =
-                            if (updateStatus == UpdateStatus.AVAILABLE)
-                                "New Version Available: $nextUpdateVersion"
-                            else if (BuildConfig.VERSION_NAME >= nextUpdateVersion)
+                            if (uiState.updateStatus == UpdateStatus.AVAILABLE)
+                                "New Version Available: ${uiState.nextUpdateVersion}"
+                            else if (BuildConfig.VERSION_NAME >= uiState.nextUpdateVersion)
                                 "You're up to date"
-                            else if (updateStatus == UpdateStatus.FAILED)
+                            else if (uiState.updateStatus == UpdateStatus.FAILED)
                                 "Failed to check updates"
                             else
                                 "Check for Updates",
@@ -197,21 +189,14 @@ fun AboutScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 16.dp,
-                            bottomStart = 16.dp
-                        )
-                    )
+                    .clip(loneListShape)
                     .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                     .padding(vertical = 12.dp, horizontal = 16.dp),
             ) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(loneListShape)
                         .background(MaterialTheme.colorScheme.onTertiaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -262,7 +247,7 @@ fun AboutScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(loneListShape)
                     .background(MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp))
                     .clickable { showLicense = true }
                     .padding(vertical = 12.dp, horizontal = 16.dp),

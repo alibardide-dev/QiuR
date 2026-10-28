@@ -1,9 +1,75 @@
 package com.phoenix.qiur.utils
 
+import io.github.alexzhirkevich.qrose.QroseEncoders
+import io.github.alexzhirkevich.qrose.matrix.Aztec
+import io.github.alexzhirkevich.qrose.matrix.DataMatrix
+import io.github.alexzhirkevich.qrose.matrix.MatrixCodeEncoder
+import io.github.alexzhirkevich.qrose.matrix.PDF417
+import io.github.alexzhirkevich.qrose.matrix.QR
+import io.github.alexzhirkevich.qrose.oned.BarcodeEncoder
+import io.github.alexzhirkevich.qrose.oned.Codabar
+import io.github.alexzhirkevich.qrose.oned.Code128
+import io.github.alexzhirkevich.qrose.oned.Code39
+import io.github.alexzhirkevich.qrose.oned.Code93
+import io.github.alexzhirkevich.qrose.oned.EAN13
+import io.github.alexzhirkevich.qrose.oned.EAN8
+import io.github.alexzhirkevich.qrose.oned.ITF
+import io.github.alexzhirkevich.qrose.oned.UPCA
+import io.github.alexzhirkevich.qrose.oned.UPCE
 import zxingcpp.BarcodeReader
 import java.math.BigDecimal
 import java.net.URI
 import java.net.URLDecoder
+
+fun barcodeEncoder(format: BarcodeReader.Format): BarcodeEncoder? {
+    return when(format) {
+        BarcodeReader.Format.CODABAR -> QroseEncoders.Codabar()
+        BarcodeReader.Format.CODE_39 -> QroseEncoders.Code39()
+        BarcodeReader.Format.CODE_39_STD -> QroseEncoders.Code39()
+        BarcodeReader.Format.CODE_39_EXT -> QroseEncoders.Code39()
+        BarcodeReader.Format.CODE_32 -> QroseEncoders.Code39()
+        BarcodeReader.Format.CODE_93 -> QroseEncoders.Code93()
+        BarcodeReader.Format.CODE_128 -> QroseEncoders.Code128()
+        BarcodeReader.Format.ITF -> QroseEncoders.ITF()
+        BarcodeReader.Format.ITF_14 -> QroseEncoders.ITF()
+        BarcodeReader.Format.DATA_BAR -> QroseEncoders.Codabar()
+        BarcodeReader.Format.DATA_BAR_OMNI -> QroseEncoders.Codabar()
+        BarcodeReader.Format.DATA_BAR_STK -> QroseEncoders.Codabar()
+        BarcodeReader.Format.DATA_BAR_STK_OMNI -> QroseEncoders.Codabar()
+        BarcodeReader.Format.DATA_BAR_LTD -> QroseEncoders.Codabar()
+        BarcodeReader.Format.DATA_BAR_EXP -> QroseEncoders.Codabar()
+        BarcodeReader.Format.DATA_BAR_EXP_STK -> QroseEncoders.Codabar()
+        BarcodeReader.Format.EAN_UPC -> QroseEncoders.EAN13()
+        BarcodeReader.Format.EAN_13 -> QroseEncoders.EAN13()
+        BarcodeReader.Format.EAN_8 -> QroseEncoders.EAN8()
+        BarcodeReader.Format.EAN_5 -> QroseEncoders.EAN8()
+        BarcodeReader.Format.EAN_2 -> QroseEncoders.EAN8()
+        BarcodeReader.Format.ISBN -> QroseEncoders.EAN13()
+        BarcodeReader.Format.UPC_A -> QroseEncoders.UPCA()
+        BarcodeReader.Format.UPC_E -> QroseEncoders.UPCE()
+        BarcodeReader.Format.DX_FILM_EDGE -> QroseEncoders.Codabar()
+        else -> null
+    }
+}
+
+fun matrixEncoder(format: BarcodeReader.Format): MatrixCodeEncoder? {
+    return when(format) {
+        BarcodeReader.Format.PDF_417 -> QroseEncoders.PDF417()
+        BarcodeReader.Format.COMPACT_PDF_417 -> QroseEncoders.PDF417()
+        BarcodeReader.Format.MICRO_PDF_417 -> QroseEncoders.PDF417()
+        BarcodeReader.Format.AZTEC -> QroseEncoders.Aztec()
+        BarcodeReader.Format.AZTEC_CODE -> QroseEncoders.Aztec()
+        BarcodeReader.Format.AZTEC_RUNE -> QroseEncoders.Aztec()
+        BarcodeReader.Format.QR_CODE -> QroseEncoders.QR()
+        BarcodeReader.Format.QR_CODE_MODEL_1 -> QroseEncoders.QR()
+        BarcodeReader.Format.QR_CODE_MODEL_2 -> QroseEncoders.QR()
+        BarcodeReader.Format.MICRO_QR_CODE -> QroseEncoders.QR()
+        BarcodeReader.Format.RMQR_CODE -> QroseEncoders.QR()
+        BarcodeReader.Format.DATA_MATRIX -> QroseEncoders.DataMatrix()
+        else -> null
+    }
+}
+
 
 enum class CodeContentType {
     TEXT,

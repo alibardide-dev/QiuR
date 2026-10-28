@@ -6,7 +6,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.phoenix.qiur.screen.about.AboutRoute
 import com.phoenix.qiur.screen.home.HomeRoute
-import com.phoenix.qiur.screen.setting.SettingRoute
 import kotlinx.serialization.Serializable
 
 @Composable
@@ -19,8 +18,9 @@ fun AppNavigation() {
                 navigateToSetting = { navController.navigate(NavDestinations.Setting) }
             )
         }
-        composable<NavDestinations.Setting>  { SettingRoute() }
-        composable<NavDestinations.About>  { AboutRoute { navController.popBackStack() } }
+        composable<NavDestinations.About>  {
+            AboutRoute { navController.popBackStack() }
+        }
     }
 }
 

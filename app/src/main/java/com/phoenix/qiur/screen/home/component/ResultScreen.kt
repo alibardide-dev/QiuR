@@ -1,5 +1,6 @@
 package com.phoenix.qiur.screen.home.component
 
+import android.app.SearchManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
@@ -40,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -49,18 +51,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.rememberConstraintsSizeResolver
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.SizeResolver
 import com.phoenix.qiur.R
 import com.phoenix.qiur.utils.CodeContent
 import com.phoenix.qiur.utils.CodeContentType
 import com.phoenix.qiur.utils.CodeResult
 import kotlinx.coroutines.launch
 
+class CodeActions(
+    val search: (String) -> Unit,
+    val copy: (String) -> Unit,
+    val share: (String) -> Unit,
+    val launch: (Intent) -> Unit,
+    val url: (String) -> Unit,
+)
+
 @Composable
 internal fun ResultScreen(
     bitmap: Bitmap?,
     results: List<CodeResult>,
-    onClickClose: () -> Unit
+    onClickClose: () -> Unit,
+    snackbar: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -75,37 +92,32 @@ internal fun ResultScreen(
         }
     }
 
-    fun shareText(text: String, type: String) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            this.type = type
-            putExtra(Intent.EXTRA_TEXT, text)
-        }
-        launchIntent(Intent.createChooser(intent, "Share with:"))
-    }
-
-    fun copyText(text: String) {
-        coroutineScope.launch {
-            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Copied!", text)))
-        }
-    }
-
     val wifiLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { }
 
     val actions = CodeActions(
-        copy = { copyText(it) },
-        share = { shareText(it, type = "text/plain") },
+        search = {
+            val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                putExtra(SearchManager.QUERY, it)
+            }
+            launchIntent(intent)
+        },
+        copy = {
+            coroutineScope.launch {
+                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Copied!", it)))
+                snackbar("Copied!")
+            }
+        },
+        share = {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                this.type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, it)
+            }
+            launchIntent(Intent.createChooser(intent, "Share"))
+        },
         launch = { launchIntent(it) },
         url = { uriHandler.openUri(it) },
-        connectWifi = {
-            connectWifi(
-                wifi = it,
-                wifiLauncher = { intent -> wifiLauncher.launch(intent) },
-                openWifiSetting = { launchIntent(Intent(Settings.ACTION_WIFI_SETTINGS)) },
-                copyPassword = { password -> copyText(password) }
-            )
-        }
     )
 
     Box {
@@ -137,7 +149,14 @@ internal fun ResultScreen(
                         is CodeContent.Sms -> SmsContent(code.content, actions)
                         is CodeContent.Email -> EmailContent(code.content, actions)
                         is CodeContent.Contact -> ContactContent(code.content, actions)
-                        is CodeContent.Wifi -> WifiContent(code.content, actions)
+                        is CodeContent.Wifi -> WifiContent(code.content, actions) {
+                            connectWifi(
+                                wifi = it,
+                                wifiLauncher = { wifi -> wifiLauncher.launch(wifi) },
+                                openWifiSetting = { launchIntent(Intent(Settings.ACTION_WIFI_SETTINGS)) },
+                            )
+                        }
+
                         is CodeContent.Geo -> GeoContent(code.content, actions)
                         is CodeContent.CalendarEvent -> CalendarContent(code.content, actions)
                         is CodeContent.EpcPayment -> EpcContent(code.content, actions)
@@ -148,12 +167,16 @@ internal fun ResultScreen(
                 }
             }
             item {
-                Image(
-                    painter = rememberAsyncImagePainter(bitmap),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(bitmap)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = "Selected Photo",
+                    contentScale = ContentScale.FillWidth,
                     modifier = Modifier
+                        .fillMaxWidth()
                         .animateItem()
-                        .fillParentMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                 )
             }
@@ -175,14 +198,6 @@ internal fun ResultScreen(
         }
     }
 }
-
-class CodeActions(
-    val copy: (String) -> Unit,
-    val share: (String) -> Unit,
-    val launch: (Intent) -> Unit,
-    val url: (String) -> Unit,
-    val connectWifi: (CodeContent.Wifi) -> Unit,
-)
 
 private val CodeContentType.label: String
     get() = when (this) {
@@ -234,6 +249,7 @@ private fun ActionRow(vararg actions: CardAction) {
 private fun TextContent(content: CodeContent.Text, actions: CodeActions) {
     Field(content.type.label, content.raw)
     ActionRow(
+        CardAction("Search") { actions.search(content.raw) },
         actionCopy(content.raw, actions.copy),
         actionShare(content.raw, actions.share)
     )
@@ -243,7 +259,7 @@ private fun TextContent(content: CodeContent.Text, actions: CodeActions) {
 private fun UrlContent(content: CodeContent.Url, actions: CodeActions) {
     Field(content.type.label, content.url)
     ActionRow(
-        CardAction("Open", { actions.url(content.url) }),
+        CardAction("Open") { actions.url(content.url) },
         actionCopy(content.url, actions.copy),
         actionShare(content.url, actions.share)
     )
@@ -327,7 +343,11 @@ private fun ContactContent(content: CodeContent.Contact, actions: CodeActions) {
 }
 
 @Composable
-private fun WifiContent(content: CodeContent.Wifi, actions: CodeActions) {
+private fun WifiContent(
+    content: CodeContent.Wifi,
+    actions: CodeActions,
+    connectWifi: (CodeContent.Wifi) -> Unit
+) {
     Field("Network", content.ssid)
     Field("Password", content.password)
     Field(
@@ -341,12 +361,12 @@ private fun WifiContent(content: CodeContent.Wifi, actions: CodeActions) {
     if (content.hidden) Field("Hidden network", "Yes")
     if (content.password != null)
         ActionRow(
-            CardAction("Connect") { actions.connectWifi(content) },
+            CardAction("Connect") { connectWifi(content) },
             CardAction("Copy password") { actions.copy(content.password) }
         )
     else
         ActionRow(
-            CardAction("Connect") { actions.connectWifi(content) }
+            CardAction("Connect") { connectWifi(content) }
         )
 }
 
@@ -433,9 +453,8 @@ private fun CryptoContent(content: CodeContent.Crypto, actions: CodeActions) {
 
 fun connectWifi(
     wifi: CodeContent.Wifi,
-    wifiLauncher: (intent: Intent) -> Unit,
+    wifiLauncher: (Intent) -> Unit,
     openWifiSetting: () -> Unit,
-    copyPassword: (String) -> Unit,
 ) {
     val canSuggest = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             (wifi.security == CodeContent.WifiSecurity.NONE ||
@@ -457,7 +476,6 @@ fun connectWifi(
             openWifiSetting()
         }
     } else {
-        wifi.password?.let { copyPassword(it) }
         openWifiSetting()
     }
 }

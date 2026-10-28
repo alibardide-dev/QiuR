@@ -2,7 +2,6 @@ package com.phoenix.qiur.screen.home
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -65,35 +64,47 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import com.phoenix.qiur.R
+import com.phoenix.qiur.data.model.History
 import com.phoenix.qiur.data.model.InputSource
 import com.phoenix.qiur.screen.home.component.CameraPermissionPopup
+import com.phoenix.qiur.screen.home.component.HistoryActions
+import com.phoenix.qiur.screen.home.component.HistoryBottomSheet
+import com.phoenix.qiur.screen.home.component.MenuActions
+import com.phoenix.qiur.screen.home.component.MenuBottomSheet
 import com.phoenix.qiur.screen.home.component.PhotoPickerScreen
 import com.phoenix.qiur.screen.home.component.ResultScreen
 import com.phoenix.qiur.utils.CodeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import zxingcpp.BarcodeReader
+
+data class HomeActions(
+    val onPermissionGranted: () -> Unit,
+    val setKeepHistory: (Boolean) -> Unit,
+    val setInputSource: (InputSource) -> Unit,
+    val scanCodeFromUri: (Uri) -> Unit,
+    val generateQRCode: (String, BarcodeReader.Format) -> Unit,
+    val clearResult: () -> Unit,
+    val dismissCameraRequest: () -> Unit,
+    val openAbout: () -> Unit,
+    val deleteHistoryEntry: (History) -> Unit,
+    val cleanHistory: () -> Unit,
+)
 
 @Composable
 fun HomeScreen(
     modifier: Modifier,
     snackbar: (String) -> Unit,
-    onClickMenu: () -> Unit,
-    onPermissionGranted: () -> Unit,
-    isUpdateAvailable: Boolean,
-    inputSource: InputSource,
-    onChangeInput: (InputSource) -> Unit,
+    uiState: HomeUiState,
+    actions: HomeActions,
     surfaceRequest: SurfaceRequest?,
-    scanCode: (Uri) -> Unit,
-    isProcessing: Boolean,
-    resultPhoto: Bitmap?,
     results: List<CodeResult>,
-    clearResult: () -> Unit,
-    showCameraPopup: Boolean,
-    dismissCameraRequest: () -> Unit,
+    historyEntries: List<History>,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
+    var showMenu by remember { mutableStateOf(false) }
+    var showHistory by remember { mutableStateOf(false) }
     var hasCameraAccess by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -102,46 +113,45 @@ fun HomeScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                dismissCameraRequest()
-                onPermissionGranted()
+                actions.dismissCameraRequest()
+                actions.onPermissionGranted()
                 hasCameraAccess = true
-                onChangeInput(InputSource.CAMERA)
+                actions.setInputSource(InputSource.CAMERA)
                 snackbar("We got live camera")
             } else {
                 snackbar("No camera it is.")
             }
         }
-
     val openDocument =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let { uri ->
                 coroutineScope.launch(Dispatchers.IO) {
-                    scanCode(uri)
+                    actions.scanCodeFromUri(uri)
                 }
             }
         }
 
-    BackHandler(resultPhoto != null) {
-        clearResult()
+    BackHandler(uiState.photoResult != null) {
+        actions.clearResult()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        AnimatedVisibility(isProcessing) {
+        AnimatedVisibility(uiState.isProcessing) {
             LinearProgressIndicator()
         }
-        AnimatedContent(resultPhoto != null) { hasPicture ->
+        AnimatedContent(uiState.photoResult != null) { hasPicture ->
             if (hasPicture) {
                 ResultScreen(
-                    bitmap = resultPhoto,
+                    bitmap = uiState.photoResult,
                     results = results,
-                    onClickClose = { clearResult() }
+                    onClickClose = actions.clearResult,
+                    snackbar = snackbar
                 )
             } else {
-                Crossfade(inputSource) { source ->
+                Crossfade(uiState.inputSource) { source ->
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -151,17 +161,17 @@ fun HomeScreen(
                                 .align(Alignment.BottomCenter)
                                 .offset(y = -ScreenOffset)
                                 .zIndex(1f),
-                            isUpdateAvailable = isUpdateAvailable,
-                            inputSource = inputSource,
-                            onClickMenu = { onClickMenu() },
+                            isUpdateAvailable = uiState.isUpdateAvailable,
+                            inputSource = uiState.inputSource,
+                            onClickMenu = { showMenu = true },
                             onClickCamera = {
                                 if (hasCameraAccess)
-                                    onChangeInput(InputSource.CAMERA)
+                                    actions.setInputSource(InputSource.CAMERA)
                                 else
                                     permissionLauncher.launch(Manifest.permission.CAMERA)
                             },
                             onClickPicture = {
-                                onChangeInput(InputSource.PICTURE)
+                                actions.setInputSource(InputSource.PICTURE)
                             }
                         )
                         when (source) {
@@ -205,7 +215,7 @@ fun HomeScreen(
                                     verticalArrangement = Arrangement.Bottom
                                 ) {
                                     AnimatedVisibility(
-                                        visible = resultPhoto == null,
+                                        visible = uiState.photoResult == null,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .weight(1f)
@@ -215,7 +225,7 @@ fun HomeScreen(
                                         )
                                     }
                                     AnimatedVisibility(
-                                        visible = showCameraPopup,
+                                        visible = uiState.showCameraPopup,
                                         modifier = Modifier
                                             .align(Alignment.CenterHorizontally)
                                             .offset(y = -ScreenOffset - 56.dp),
@@ -223,7 +233,7 @@ fun HomeScreen(
                                     ) {
                                         CameraPermissionPopup(
                                             onClickDismiss = {
-                                                dismissCameraRequest()
+                                                actions.dismissCameraRequest()
                                             },
                                             onClickAllow = {
                                                 permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -236,6 +246,33 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (showMenu) {
+        MenuBottomSheet(
+            setShowSheet = { showMenu = false },
+            actions = MenuActions(
+                setKeepHistory = { actions.setKeepHistory(it) },
+                openHistory = { showHistory = true },
+                openAbout = { actions.openAbout() }
+            ),
+            isHistoryEnabled = uiState.isHistoryEnabled,
+            isUpdateAvailable = uiState.isUpdateAvailable,
+        )
+    }
+    if (showHistory) {
+        HistoryBottomSheet(
+            setShowSheet = { showHistory = false },
+            entries = historyEntries,
+            actions = HistoryActions(
+                open = {
+                    actions.generateQRCode(it.raw, BarcodeReader.Format.valueOf(it.format))
+                    showMenu = false
+                       },
+                delete = { actions.deleteHistoryEntry(it) },
+                deleteAll = { actions.cleanHistory() },
+            ),
+        )
     }
 }
 
