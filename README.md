@@ -2,7 +2,7 @@
 
 # QiuR - Scan QR with ease
 
-QiuR is an adnroid app that scan QR, or barcodes. Simple as that. With new material3 design you can use this app and don't worry about your privacy. If you don't like to use your camera, you're free not to.
+QiuR is a modern Android app that scan QR, or barcodes. Simple as that. built with Jetpack Compose and Material 3 design, respects your privacy, no unnecessary permission or data collection. If you don't like to use your camera, you're free not to.
 
 To download, you can checkout [latest release](https://github.com/alibardide-dev/QiuR/releases/latest) of QiuR
 
@@ -78,6 +78,11 @@ To download, you can checkout [latest release](https://github.com/alibardide-dev
 - Build project with Ctrl + F9
 - Install Virtual Machine or connect a Physical Device
 - Run using Shift + F10
+
+# Special Thanks
+
+- To [zxing-cpp](https://github.com/zxing-cpp/zxing-cpp), a cpp port of zxing to scan QR and barcodes
+- To [Alexander Zhirkevich](https://github.com/alexzhirkevich) for [QRose](https://github.com/alexzhirkevich/qrose), a library to generate QR / barcodes
 
 # Support
 
