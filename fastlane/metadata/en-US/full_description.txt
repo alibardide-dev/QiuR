@@ -1,0 +1,6 @@
+QiuR is a modern Android app that scan QR, or barcodes. Simple as that. Respects your privacy, no unnecessary permission or data collection. If you don't like to use your camera, you're free not to.
+
+Features
+    Scan with Camera, or from gallery
+    Modern UI with Material 3 Expressive
+    Keep a history of your scans, or don't

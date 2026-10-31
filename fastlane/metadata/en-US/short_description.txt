@@ -1,0 +1,1 @@
+A privacy-focused Material 3 QR/Barcode Scanner
